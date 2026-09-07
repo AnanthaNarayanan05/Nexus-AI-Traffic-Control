@@ -176,7 +176,7 @@ async def _handle_command(client: _Client, mgr: Any, msg: dict) -> None:
 
 # Commands whose return value is a full status document.
 _STATUS_COMMANDS = frozenset(
-    {"start", "pause", "reset", "set_mode", "set_speed", "step", "load_scenario"}
+    {"start", "pause", "reset", "set_mode", "set_speed", "set_model", "step", "load_scenario"}
 )
 
 
@@ -191,6 +191,8 @@ def _run_command(mgr: Any, action: str, args: dict) -> dict:
         return mgr.set_mode(args["mode"])
     if action == "set_speed":
         return mgr.set_speed(args["speed"])
+    if action == "set_model":
+        return mgr.set_model(args["agent"], args["mode"], args.get("version"))
     if action == "manual":
         return mgr.manual_action(args["action"])
     if action == "inject":

@@ -302,9 +302,15 @@ export interface SimStatus {
   seq: number;
   agents: Record<AgentKey, AgentStatus>;
   safety: { overrides_total: number; checks_total: number };
+  /** Which weights each agent is running live: fresh init vs a validated checkpoint. */
+  model_modes: Record<AgentKey, ModelMode>;
+  /** Registry model id the trained weights came from, or null when untrained. */
+  model_sources: Record<AgentKey, string | null>;
   config_digest: string;
   env: string;
 }
+
+export type ModelMode = 'untrained' | 'trained';
 
 export interface ScenarioSummary {
   id: string;

@@ -6,6 +6,7 @@ import { CoordinationBar } from '../components/CoordinationBar';
 import { DQNPanel } from '../components/DQNPanel';
 import { EventTimeline } from '../components/EventTimeline';
 import { MetricsRow } from '../components/MetricsRow';
+import { ModelModeBar } from '../components/ModelModeBar';
 import { PPOStrip } from '../components/PPOStrip';
 import { SimulationStage } from '../components/SimulationStage';
 import { api } from '../lib/api';
@@ -17,6 +18,7 @@ function Dashboard() {
   return (
     <main className="dashboard">
       <div className="column">
+        <ModelModeBar />
         <A2CPanel />
         <PPOStrip />
       </div>

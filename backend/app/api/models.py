@@ -22,6 +22,15 @@ class SpeedRequest(BaseModel):
     speed: float = Field(ge=0.1, le=20.0)
 
 
+class ModelRequest(BaseModel):
+    agent: str = Field(description="a2c | dqn | ppo")
+    mode: str = Field(description="untrained | trained")
+    version: str | None = Field(
+        default=None,
+        description="registry model id or version string; defaults to the active/latest checkpoint",
+    )
+
+
 class ManualRequest(BaseModel):
     action: str
 

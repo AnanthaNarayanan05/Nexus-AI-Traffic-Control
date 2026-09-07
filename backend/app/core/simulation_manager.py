@@ -20,6 +20,7 @@ import threading
 import time
 import uuid
 from collections import deque
+from pathlib import Path
 from typing import Any, Callable
 
 from app.agents.a2c import A2CAgent
@@ -81,6 +82,11 @@ class SimulationManager:
         self.agents: dict[AgentName, BaseAgent] = {
             AgentName.A2C: self.a2c, AgentName.DQN: self.dqn, AgentName.PPO: self.ppo,
         }
+        # Which weights each agent is running: "untrained" (fresh init) or "trained"
+        # (a validated checkpoint from the registry). Starts untrained - the live app
+        # makes no claim of a learned policy until a checkpoint is loaded here (§84).
+        self._model_mode: dict[AgentName, str] = dict.fromkeys(AgentName, "untrained")
+        self._model_source: dict[AgentName, str | None] = dict.fromkeys(AgentName, None)
         self.coordinator = Coordinator()
         self.safety = SafetyValidator()
         self.metrics = MetricsAggregator(self.adapter)
@@ -195,6 +201,67 @@ class SimulationManager:
             return self.status()
         return self.submit(op)
 
+    _AGENT_CLASSES = {
+        AgentName.A2C: A2CAgent, AgentName.DQN: DQNAgent, AgentName.PPO: PPOAgent,
+    }
+
+    def set_model(self, agent: str, mode: str, version: str | None = None) -> dict:
+        """Swap an agent between fresh (``untrained``) weights and a registry checkpoint.
+
+        A ``trained`` request is honoured only if a checkpoint file actually exists and,
+        once loaded, reports ``trained_episodes > 0`` - otherwise it fails and the agent
+        is left untouched (no fake ``is_trained`` badge, §84 / §114). Safety stays
+        authoritative regardless of which weights run (§113).
+        """
+        try:
+            name = AgentName(agent.lower())
+        except ValueError as exc:
+            raise ValueError(f"unknown agent {agent!r}") from exc
+        mode = mode.lower()
+        if mode not in ("untrained", "trained"):
+            raise ValueError(f"mode must be 'untrained' or 'trained' (got {mode!r})")
+        cls = self._AGENT_CLASSES[name]
+
+        if mode == "untrained":
+            fresh = cls(seed=self.default_seed)
+            source_id = None
+            note = "fresh weights"
+        else:
+            from app.persistence import ModelRegistry
+            reg = ModelRegistry()
+            rows = reg.list(agent=name.value)
+            if version:
+                row = next((r for r in rows if r["version"] == version or r["id"] == version), None)
+            else:
+                row = reg.active(name.value) or reg.latest(name.value)
+            if row is None:
+                raise ValueError(f"no {'matching ' if version else 'trained '}model for {name.value}")
+            ckpt = Path(row["checkpoint_path"])
+            if not ckpt.is_file():
+                raise ValueError(f"checkpoint missing on disk: {ckpt}")
+            fresh = cls(seed=self.default_seed)
+            fresh.load(ckpt)
+            if not fresh.is_trained:
+                raise ValueError(f"checkpoint {ckpt.name} has trained_episodes=0 - not a trained model")
+            source_id = row["id"]
+            note = f"{row['id']} ({fresh.model_version})"
+
+        def op() -> dict:
+            self.agents[name] = fresh
+            if name == AgentName.A2C:
+                self.a2c = fresh
+            elif name == AgentName.DQN:
+                self.dqn = fresh
+            else:
+                self.ppo = fresh
+            self._model_mode[name] = mode
+            self._model_source[name] = source_id
+            self._pending = None  # mixing policies mid-decision is not comparable
+            self._emit(EventCategory.SYSTEM, Severity.NOTICE,
+                       f"{name.value.upper()} model -> {mode.upper()}: {note}")
+            return self.status()
+        return self.submit(op)
+
     def set_speed(self, speed: float) -> dict:
         def op() -> dict:
             self.speed = max(0.1, min(20.0, float(speed)))
@@ -249,6 +316,8 @@ class SimulationManager:
             "episode_done": self._episode_done,
             "seq": self._seq,
             "agents": {n.value: a.status().model_dump(mode="json") for n, a in self.agents.items()},
+            "model_modes": {n.value: self._model_mode[n] for n in AgentName},
+            "model_sources": {n.value: self._model_source[n] for n in AgentName},
             "safety": {"overrides_total": self.safety.overrides_total,
                        "checks_total": self.safety.checks_total},
             "config_digest": get_config().digest,

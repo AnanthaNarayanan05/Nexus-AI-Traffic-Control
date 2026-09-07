@@ -130,6 +130,33 @@ def test_mode_switch_and_invalid_mode(client):
     assert client.post("/api/v1/simulation/mode", json={"mode": "TELEPORT"}).status_code == 400
 
 
+def test_model_mode_defaults_untrained_and_is_in_status(client):
+    st = client.get("/api/v1/simulation/status").json()
+    assert st["model_modes"] == {"a2c": "untrained", "dqn": "untrained", "ppo": "untrained"}
+    assert st["model_sources"] == {"a2c": None, "dqn": None, "ppo": None}
+    for a in ("a2c", "dqn", "ppo"):
+        assert st["agents"][a]["is_trained"] is False
+
+
+def test_model_trained_request_without_a_checkpoint_is_rejected(client):
+    # per-test isolated DB is empty -> no trained model to load, and no fake badge (spec 84)
+    r = client.post("/api/v1/simulation/model", json={"agent": "a2c", "mode": "trained"})
+    assert r.status_code == 400
+    assert "no trained model" in r.json()["detail"]
+    assert client.get("/api/v1/simulation/status").json()["agents"]["a2c"]["is_trained"] is False
+
+
+def test_model_mode_bad_input_is_rejected(client):
+    assert client.post("/api/v1/simulation/model",
+                       json={"agent": "a2c", "mode": "sideways"}).status_code == 400
+    assert client.post("/api/v1/simulation/model",
+                       json={"agent": "nope", "mode": "untrained"}).status_code == 400
+    # explicit untrained is always allowed and idempotent
+    r = client.post("/api/v1/simulation/model", json={"agent": "dqn", "mode": "untrained"})
+    assert r.status_code == 200
+    assert r.json()["model_modes"]["dqn"] == "untrained"
+
+
 def test_manual_action_requires_manual_mode(client):
     # default mode is AI -> rejected
     r = client.post("/api/v1/simulation/manual", json={"action": "SWITCH"})

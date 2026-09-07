@@ -55,6 +55,8 @@ export const api = {
     post<SimStatus>('/simulation/reset', { scenario_id, seed }),
   step: (ticks = 1) => post<SimStatus>('/simulation/step', { ticks }),
   setMode: (mode: string) => post<SimStatus>('/simulation/mode', { mode }),
+  setModel: (agent: AgentKey, mode: 'untrained' | 'trained', version?: string) =>
+    post<SimStatus>('/simulation/model', { agent, mode, version: version ?? null }),
   setSpeed: (speed: number) => post<SimStatus>('/simulation/speed', { speed }),
   manual: (action: string) => post<Record<string, unknown>>('/simulation/manual', { action }),
   inject: (event: string, args: Record<string, unknown> = {}) =>

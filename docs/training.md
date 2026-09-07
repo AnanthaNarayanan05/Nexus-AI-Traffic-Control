@@ -260,12 +260,27 @@ Two findings recur across A2C, DQN and PPO and belong in the write-up:
    "propose aggressively, get bounded". Reward-shaping to discourage the aggressive
    proposals is the follow-up.
 
+## Trained checkpoints in live inference (STEP 8)
+
+`POST /api/v1/simulation/model {agent, mode, version?}` (or the `set_model` WS command)
+swaps a live agent between:
+
+- **`untrained`** — a fresh `AgentClass(seed=...)`. Always available, idempotent.
+- **`trained`** — the agent's `active` registry row (else the most recent). The manager
+  checks the checkpoint file exists, loads it into a fresh instance, and **only keeps it
+  if `trained_episodes > 0` after load**. Any failure → HTTP 400 and the running agent is
+  left exactly as it was. No path sets `is_trained` without a real checkpoint behind it
+  (§84 / §114).
+
+`status()` gains `model_modes` and `model_sources` (the registry id the weights came
+from). The safety layer is unchanged and still authoritative for both modes (§113). The
+dashboard's `ModelModeBar` drives this per agent; the badge mirrors the backend's honest
+`is_trained`.
+
+Promote a checkpoint to `active` with `ModelRegistry.promote(model_id)` (see
+`docs/persistence.md`) so `mode:"trained"` picks it up without an explicit `version`.
+
 ## Not yet (next sub-slice)
 
 - DQN convergence follow-up (longer schedule); reward-penalty / throughput-weight review for all three
-- Training Lab UI (`/training` route) and trained-vs-fixed-time comparison
-- wiring a chosen (`active`) checkpoint into the live `SimulationManager` agent registry
-
-The SQLite model registry now indexes every run's final checkpoint (`docs/persistence.md`).
-The live app still runs inference-only (honest `UNTRAINED` badges) until a checkpoint is
-promoted (`status = active`) and wired in.
+- Trained-vs-fixed-time comparison surfaced inside the Training Lab (the eval JSON reports already exist)

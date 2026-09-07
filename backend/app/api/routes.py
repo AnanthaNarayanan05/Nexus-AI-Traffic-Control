@@ -15,6 +15,7 @@ from app.api.models import (
     InjectRequest,
     LoadScenarioRequest,
     ManualRequest,
+    ModelRequest,
     ModeRequest,
     ResetRequest,
     SpeedRequest,
@@ -107,6 +108,14 @@ def simulation_mode(body: ModeRequest) -> dict:
 @api_router.post("/simulation/speed")
 def simulation_speed(body: SpeedRequest) -> dict:
     return get_manager().set_speed(body.speed)
+
+
+@api_router.post("/simulation/model")
+def simulation_model(body: ModelRequest) -> dict:
+    try:
+        return get_manager().set_model(body.agent, body.mode, body.version)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
 
 
 @api_router.post("/simulation/manual")
