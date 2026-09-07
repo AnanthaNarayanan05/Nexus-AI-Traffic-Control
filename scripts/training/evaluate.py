@@ -17,7 +17,13 @@ from pathlib import Path
 
 import scripts._bootstrap  # noqa: F401  (sys.path side effect - must precede app imports)
 
-from app.training import AGENT_CLASSES, evaluate, improvement_pct, write_report  # noqa: E402
+from app.training import (  # noqa: E402
+    AGENT_CLASSES,
+    compare,
+    evaluate,
+    improvement_pct,
+    write_report,
+)
 from app.training.evaluation import METRIC_DIRECTION  # noqa: E402
 
 _HEADLINE = {
@@ -43,6 +49,10 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
                    help="trained checkpoint (default: models/<agent>/latest.pt)")
     p.add_argument("--out", default=None, help="report dir (default: models/<agent>/)")
     p.add_argument("--full", action="store_true", help="print every metric, not just headline")
+    p.add_argument("--register", action="store_true",
+                   help="attach this evaluation to the checkpoint's model-registry row")
+    p.add_argument("--model-id", default=None,
+                   help="registry id to attach to (default: match by the checkpoint's run_id)")
     p.add_argument("--episode-seconds", type=float, default=None,
                    help="override episode length in sim seconds (default: scenario's, 3600)")
     return p.parse_args(argv)
@@ -92,9 +102,35 @@ def main(argv: list[str] | None = None) -> int:
 
     report = write_report(results, out_dir)
     print(f"\nreport: {report}")
+
+    if args.register:
+        _register_evaluation(args, ckpt, results)
+
     print(f"n={len(seeds)} episodes per controller — CIs are wide at this n; "
           f"treat as indicative, not a significance claim.")
     return 0
+
+
+def _register_evaluation(args: argparse.Namespace, ckpt: Path, results: list) -> None:
+    """Attach the comparison blob to the checkpoint's model-registry row, if there is one."""
+    import torch
+
+    from app.persistence import ModelRegistry
+
+    reg = ModelRegistry()
+    model_id = args.model_id
+    if model_id is None:
+        meta = torch.load(ckpt, map_location="cpu", weights_only=False).get("meta", {})
+        run_id = meta.get("run_id")
+        matches = [m for m in reg.list(agent=args.agent) if m["run_id"] == run_id] if run_id else []
+        if not matches:
+            print("registry: no model row matches this checkpoint — run --register after a "
+                  "registered training run, or pass --model-id. Skipped.")
+            return
+        model_id = matches[0]["id"]
+    blob = compare(results, baseline_label="fixed_time")
+    row = reg.attach_evaluation(model_id, scenario=args.scenario, metrics=blob)
+    print(f"registry: evaluation attached to {row['id']}  (status -> {row['status']})")
 
 
 if __name__ == "__main__":

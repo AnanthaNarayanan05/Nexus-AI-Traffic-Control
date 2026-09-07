@@ -8,13 +8,13 @@ Legend: ✅ working end-to-end · 🟡 partial / scaffolded · ⬜ not started
 
 Verified end-to-end 2026-09-07: built-in sim → FastAPI → WebSocket → PixiJS render →
 A2C/DQN/PPO decision loop → coordination → safety → applied phase → measured metrics,
-all in the browser. `pytest tests/` (148, incl. Slice 2) + `vitest` (29) green;
+all in the browser. `pytest tests/` (160, incl. Slice 2) + `vitest` (29) green;
 `npm run build` + `eslint` + `tsc -b` clean.
 
 | Area | State | Notes |
 |---|---|---|
 | Monorepo structure, configs, docs | ✅ | |
-| §120 design docs | ✅ | architecture, system-flow, simulation schema, a2c/dqn/ppo, coordination, safety, metrics, experiments, assumptions, limitations |
+| §120 design docs | ✅ | architecture, system-flow, simulation schema, a2c/dqn/ppo, coordination, safety, metrics, experiments, persistence, training, assumptions, limitations |
 | `SimulationAdapter` + `BuiltinAdapter` | ✅ | 4-way intersection, Poisson arrivals, IDM-lite car-following, signal SM, fuel/emission accrual; deterministic per seed |
 | `SumoAdapter` | ⬜ | interface stub + install guide only |
 | Typed schemas (`SimulationState`, recommendations, decisions, safety, metrics, events) | ✅ | |
@@ -35,7 +35,7 @@ all in the browser. `pytest tests/` (148, incl. Slice 2) + `vitest` (29) green;
 | Coordination bar | ✅ | 3 recs → winner + basis → safety verdict + ladder trace + score breakdown |
 | Metrics row + event timeline | ✅ | filterable TRAFFIC/AI/EMERGENCY/SAFETY/VIOLATION/SYSTEM; server errors surfaced verbatim |
 | Agent inspector REST polling | ✅ | `GET /agents/{name}` on a 2 s poll; not streamed (cost) |
-| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation) | ✅ | `pytest tests/` → 148 pass (agents 64, coordination 14, safety 17, simulation 10, integration/API+WS 22, training 13, evaluation 8); `vitest` → 29 pass |
+| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation) | ✅ | `pytest tests/` → 160 pass (agents 64, coordination 14, safety 17, simulation 10, integration/API+WS 22, training 13, evaluation 8, persistence 12); `vitest` → 29 pass |
 
 ## Slice 2 — training loops  *(in progress)*
 
@@ -54,7 +54,7 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 | DQN training | ✅ | replay fills (~2 episodes) then target-net updates every `train_freq` (~151/episode). **Run `dqn-20260907T165632Z`, `high_stop_go`, 200 episodes, 773 s.** Return −492 (first 5) → −475 (last 5); ε floors at 0.05 by ~ep 67; mean Q drifts −18 → −45 (not fully converged). `models/dqn/latest.pt` = `dqn-v1.4-dev`. |
 | DQN evaluated (8 held-out seeds) | ✅ | vs fixed-time: avg waiting **+62.9%**, avg queue **+50.8%**, idle time **+52.3%**, speed +43.6%, stops/veh +12.4%, fuel/CO₂ per veh **+2.6% / +2.4%** (its objective), emergency wait +32.3%. **Cost: red-light violations −35.7% (7.0 → 9.5/ep), other violations −70%, 27 safety overrides/ep.** Trained ≫ untrained (catastrophic). Full table in [`training.md`](training.md). |
 | PPO training | 🟡 | tuned: `rollout_steps` 512 → 200 + episode-end flush → **3 real updates/episode** (was ~1); seeded minibatch shuffle → reproducible. Full run `ppo-20260907T171054Z` (`rush_hour`, 200 ep) in progress. |
-| SQLite model registry + versioning | 🟡 | in progress; `latest.pt` + `<run_id>.json` on disk are the record of truth for now |
+| SQLite model registry + versioning | ✅ | `app/persistence` (SQLAlchemy 2 + SQLite at `data/nexus.db`). `models` table: agent, version, checkpoint path, run id, scenario, seed, episodes, training + reward config, config digest, git sha, torch version, timestamps, eval metrics, status (`trained`→`evaluated`→`active`, one `active`/agent). `TrainingManager` auto-registers its final checkpoint; `evaluate --register` attaches the comparison blob; `scripts.training.backfill_registry` imports pre-registry runs. 12 tests. Doc: [`persistence.md`](persistence.md). |
 | `GET /api/v1/training` + WS progress stream | ⬜ | still 404 (§98); `test_deferred_endpoints_are_absent_not_stubbed` still valid |
 | Training Lab UI (`/training`) + trained-vs-fixed comparison | ⬜ | next sub-slice |
 | Trained checkpoint wired into live `SimulationManager` | ⬜ | live app still inference-only (honest `UNTRAINED` badges) |

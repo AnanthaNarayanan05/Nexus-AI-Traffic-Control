@@ -115,8 +115,11 @@ vs fixed-time (sign follows whether lower or higher is better for each metric). 
 
 ```bash
 python -m scripts.training.evaluate --agent a2c --scenario emergency_heavy \
-    --seeds 1,2,3,4,5,6,7,8 --checkpoint models/a2c/latest.pt
+    --seeds 1,2,3,4,5,6,7,8 --checkpoint models/a2c/latest.pt [--register]
 ```
+
+`--register` attaches the comparison blob to the checkpoint's row in the model
+registry (`docs/persistence.md`), matched by the checkpoint's `run_id`.
 
 ### A2C — `a2c-v1.4-dev`, `emergency_heavy`, seeds 1–8 (held out from training seeds 42–241)
 
@@ -194,10 +197,10 @@ n = 8, wide CIs — indicative only. Report: `models/dqn/eval-20260907T171040Z.j
 
 - tuned PPO full run, evaluated the same way (config tuned + smoke-verified; run pending)
 - DQN convergence follow-up (longer schedule) + reward-penalty review for A2C/DQN
-- SQLite model registry (`models` table, `docs/experiments.md §5`) and versioning
 - `GET /api/v1/training` + `TrainingManager` progress streamed over WS
 - Training Lab UI (`/training` route) and trained-vs-fixed-time comparison
-- wiring a chosen checkpoint into the live `SimulationManager` agent registry
+- wiring a chosen (`active`) checkpoint into the live `SimulationManager` agent registry
 
-Until the registry exists, `latest.pt` on disk is the record of truth and the live app
-still runs inference-only (honest `UNTRAINED` badges).
+The SQLite model registry now indexes every run's final checkpoint (`docs/persistence.md`).
+The live app still runs inference-only (honest `UNTRAINED` badges) until a checkpoint is
+promoted (`status = active`) and wired in.

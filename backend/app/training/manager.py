@@ -9,8 +9,10 @@ A run produces, on disk under ``models/<agent>/``:
   * ``<run_id>.json``        - the full run record: per-episode returns / losses /
                                safety-override counts / wall time + a reproducibility blob
 
-Nothing is persisted to SQLite yet (the model registry is the next sub-slice); the JSON
-artifact is the record of truth for now.
+At the end of a run the final checkpoint is also recorded in the SQLite model registry
+(`app/persistence`, `models` table). The JSON artifact remains the full record; the
+registry row is the queryable index (agent, version, scenario, seed, config digest,
+git sha, and - once attached - evaluation metrics and serving status).
 """
 
 from __future__ import annotations
@@ -129,7 +131,7 @@ class TrainingManager:
     def __init__(self, agent: str, *, episodes: int, scenario: str | None = None,
                  seed: int | None = None, checkpoint_every: int = 25,
                  out_dir: Path | None = None, quiet_safety_logs: bool = True,
-                 episode_seconds: float | None = None) -> None:
+                 episode_seconds: float | None = None, register: bool = True) -> None:
         self.agent_name = agent.lower()
         if self.agent_name not in AGENT_CLASSES:
             raise KeyError(f"unknown agent '{agent}' (known: {sorted(AGENT_CLASSES)})")
@@ -141,6 +143,7 @@ class TrainingManager:
         self.seed = int(seed if seed is not None else get_config().simulation.seed)
         self.checkpoint_every = max(1, int(checkpoint_every))
         self.quiet_safety_logs = quiet_safety_logs
+        self.register = register
         self.out_dir = (out_dir or get_settings().models_dir) / self.agent_name
         self.run_id = f"{self.agent_name}-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}"
 
@@ -210,7 +213,28 @@ class TrainingManager:
             "final_return": run.episode_returns[-1] if run.episode_returns else None,
             "final_checkpoint": final, "latest": latest, "metrics": str(metrics_path),
         })
+
+        if self.register:
+            self._register(run)
         return run
+
+    def _register(self, run: TrainingRun) -> None:
+        """Record the final checkpoint in the SQLite model registry.
+
+        A registry failure never fails a completed run - the ``<run_id>.json`` on disk
+        is still the record of truth (spec §98: degrade, log, continue).
+        """
+        try:
+            from app.persistence import ModelRegistry
+
+            row = ModelRegistry().register_training_run(
+                run, checkpoint=run.final_checkpoint,
+                model_id=f"{run.run_id}-ep{self.episodes:03d}",
+            )
+            log.info("model registered", model_id=row["id"], status=row["status"])
+        except Exception as exc:  # noqa: BLE001 - persistence is best-effort here
+            log.warning("model registry write failed; run artifacts still on disk",
+                        run_id=self.run_id, error=str(exc))
 
     # ------------------------------------------------------------------ internals
     def _checkpoint(self, episode: int, *, name: str | None = None) -> str:
