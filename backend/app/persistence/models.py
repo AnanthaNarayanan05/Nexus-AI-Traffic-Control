@@ -1,4 +1,5 @@
-"""ORM tables. Slice 2: the model registry only (`models`, docs/experiments.md §5)."""
+"""ORM tables: the model registry (`models`) and experiments (`experiments`),
+docs/experiments.md §5."""
 
 from __future__ import annotations
 
@@ -16,6 +17,9 @@ def _utcnow_iso() -> str:
 
 # status lifecycle for a registered checkpoint
 MODEL_STATUSES = ("trained", "evaluated", "active", "archived")
+
+# status lifecycle for an experiment run
+EXPERIMENT_STATUSES = ("running", "completed", "failed")
 
 
 class ModelRecord(Base):
@@ -74,3 +78,55 @@ class ModelRecord(Base):
             "status": self.status,
             "notes": self.notes,
         }
+
+
+class ExperimentRecord(Base):
+    """One Fixed-Time vs AI comparison run (docs/experiments.md §2-3, spec §48-56).
+
+    An experiment evaluates one or more *controllers* (``fixed_time`` and/or an RL agent,
+    trained or untrained) over the same held-out seeds on one scenario, then stores the
+    per-controller aggregates, the honest baseline-vs-candidate comparison blob, and a
+    frozen reproducibility blob. Every number is a real episode measurement (spec §84).
+    """
+
+    __tablename__ = "experiments"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # "exp-<UTC stamp>"
+    name: Mapped[str] = mapped_column(String(120))
+    created_at: Mapped[str] = mapped_column(String(40), default=_utcnow_iso, index=True)
+    finished_at: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    wall_time_s: Mapped[float] = mapped_column(default=0.0)
+
+    scenario: Mapped[str] = mapped_column(String(48))
+    controllers: Mapped[list] = mapped_column(JSON, default=list)   # ["fixed_time","a2c",...]
+    seeds: Mapped[list] = mapped_column(JSON, default=list)         # [1,2,3,...]
+    episode_seconds: Mapped[float | None] = mapped_column(nullable=True)
+    baseline: Mapped[str] = mapped_column(String(24), default="fixed_time")
+
+    reproducibility: Mapped[dict] = mapped_column(JSON, default=dict)   # frozen blob
+    comparison: Mapped[dict | None] = mapped_column(JSON, nullable=True)   # compare() output
+    results: Mapped[list | None] = mapped_column(JSON, nullable=True)     # per-controller detail
+
+    status: Mapped[str] = mapped_column(String(16), default="running", index=True)
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    def as_dict(self, *, full: bool = True) -> dict:
+        out = {
+            "id": self.id,
+            "name": self.name,
+            "created_at": self.created_at,
+            "finished_at": self.finished_at,
+            "wall_time_s": round(self.wall_time_s or 0.0, 2),
+            "scenario": self.scenario,
+            "controllers": list(self.controllers or []),
+            "seeds": list(self.seeds or []),
+            "episode_seconds": self.episode_seconds,
+            "baseline": self.baseline,
+            "status": self.status,
+            "error": self.error,
+        }
+        if full:
+            out["reproducibility"] = self.reproducibility or {}
+            out["comparison"] = self.comparison
+            out["results"] = self.results
+        return out

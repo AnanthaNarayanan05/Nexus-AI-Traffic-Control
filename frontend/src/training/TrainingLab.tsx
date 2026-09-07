@@ -263,7 +263,8 @@ function LiveRun({ job }: { job: TrainingJob | null }) {
           <KV k="Checkpoint" v={job.final_checkpoint ?? NO_DATA} />
           <p className="panel-sub">
             The checkpoint is saved and registered as <code>trained</code>. It is not in live
-            inference yet — promote it to <code>active</code> (STEP 8) first.
+            inference yet — flip this agent to <code>TRAINED</code> on the dashboard&apos;s LIVE
+            MODEL bar to load it.
           </p>
         </div>
       ) : null}
@@ -429,8 +430,8 @@ export function TrainingLab() {
         <div className="lab-legend-item">
           <SectionLabel>LIVE INFERENCE</SectionLabel>
           <p>
-            The running simulation on the dashboard. Still <strong>UNTRAINED</strong> until trained
-            checkpoints are promoted into it (STEP 8).
+            The running simulation on the dashboard. Each agent stays <strong>UNTRAINED</strong>
+            until you load a checkpoint from the LIVE MODEL bar there.
           </p>
         </div>
       </div>

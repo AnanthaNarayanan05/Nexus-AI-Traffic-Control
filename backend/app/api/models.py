@@ -57,3 +57,18 @@ class StartTrainingRequest(BaseModel):
     scenario: str | None = Field(default=None, description="preset id; default = agent's own stress scenario")
     seed: int | None = None
     checkpoint_every: int = Field(default=25, ge=1, le=1000)
+
+
+class StartExperimentRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=120,
+                             description="optional label; a default is derived from the config")
+    scenario: str = Field(description="preset id or a saved custom scenario id")
+    controllers: list[str] = Field(
+        description="any of: fixed_time, a2c, dqn (PPO is out of the R9 active scope)")
+    seeds: list[int] = Field(description="held-out episode seeds; one episode per (controller, seed)")
+    models: dict[str, str] = Field(
+        default_factory=dict,
+        description="per-agent checkpoint selector: 'untrained' | 'active' | 'latest' | "
+                    "'<registry model id>' (default: untrained)")
+    episode_seconds: float | None = Field(
+        default=None, description="override episode length in sim seconds (default: scenario's)")

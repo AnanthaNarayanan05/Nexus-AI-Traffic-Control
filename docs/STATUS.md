@@ -18,17 +18,21 @@ algorithm roster:
   pipeline, the training workflow (`ACTIVE_AGENTS` gate) and the primary frontend now only
   touch A2C + DQN. New PPO training runs are rejected; `GET /api/v1/agents/ppo` → 404;
   `POST /simulation/model {agent:"ppo"}` → rejected; `PPOStrip.tsx` is unmounted.
-- R9 priority order for remaining work: **P1** evaluation correctness + comparison UI →
+- R9 priority order for remaining work: ~~**P1** evaluation correctness + comparison UI~~ ✅ →
   **P2** preset/custom scenario system → **P3** replay + inspectors → **P4** export +
   presentation mode → **P5** UI polish → **P6** performance / a11y / responsive →
   **P7** docs / QA / reproducibility / demo readiness.
+- **P1 done (2026-09-08):** `ExperimentService` + `GET/POST /api/v1/experiments` +
+  `experiments` persistence table + Experiment Lab (`#/experiments`) with the honest
+  Fixed-Time vs AI comparison table. See the Slice 2 table below and
+  [`experiments.md`](experiments.md).
 
 ## Slice 1 — Foundation + simulation + full agent vertical slice  *(complete, inference-only)*
 
 Verified end-to-end 2026-09-07: built-in sim → FastAPI → WebSocket → PixiJS render →
 agent decision loop → coordination → safety → applied phase → measured metrics,
-all in the browser. `pytest tests/` (177, incl. Slice 2 + R9 deprecation) + `vitest` (36) green;
-`npm run build` + `eslint` + `tsc -b` clean.
+all in the browser. `pytest tests/` (191, incl. Slice 2 + R9 deprecation + P1 experiments) +
+`vitest` (46) green; `npm run build` + `eslint` + `tsc -b` clean.
 
 | Area | State | Notes |
 |---|---|---|
@@ -54,7 +58,7 @@ all in the browser. `pytest tests/` (177, incl. Slice 2 + R9 deprecation) + `vit
 | Coordination bar | ✅ | A2C + DQN recs → winner + basis → safety verdict + ladder trace + score breakdown (engine still accepts N recs; PPO no longer feeds it) |
 | Metrics row + event timeline | ✅ | filterable TRAFFIC/AI/EMERGENCY/SAFETY/VIOLATION/SYSTEM; server errors surfaced verbatim |
 | Agent inspector REST polling | ✅ | `GET /agents/{name}` on a 2 s poll; not streamed (cost) |
-| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation) | ✅ | `pytest tests/` → **177 pass** (incl. R9: PPO rejected from live inference + agent inspector); `vitest` → **36 pass** (incl. `ACTIVE_AGENTS` scope lock). PPO unit tests (agent contract, reward, state builder) retained and green — legacy code stays covered. |
+| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation, experiments) | ✅ | `pytest tests/` → **191 pass** (incl. R9: PPO rejected from live inference + agent inspector; P1: experiment store + service + API); `vitest` → **46 pass** (incl. `ACTIVE_AGENTS` scope lock, `ComparisonTable` honesty rules, `ExperimentLab`). PPO unit tests (agent contract, reward, state builder) retained and green — legacy code stays covered. |
 
 ## Slice 2 — training loops  *(in progress)*
 
@@ -76,17 +80,19 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 | PPO evaluated (8 held-out seeds) | ⚠️ | legacy result kept for the record (vs fixed-time: avg waiting +30.7%, speed +65.7%, throughput −12.6%, 47 safety overrides/ep). PPO is out of the R9 comparison workflow. Full table in [`training.md`](training.md). |
 | SQLite model registry + versioning | ✅ | `app/persistence` (SQLAlchemy 2 + SQLite at `data/nexus.db`). `models` table: agent, version, checkpoint path, run id, scenario, seed, episodes, training + reward config, config digest, git sha, torch version, timestamps, eval metrics, status (`trained`→`evaluated`→`active`, one `active`/agent). `TrainingManager` auto-registers its final checkpoint; `evaluate --register` attaches the comparison blob; `scripts.training.backfill_registry` imports pre-registry runs. 12 tests. Doc: [`persistence.md`](persistence.md). |
 | `TrainingService` (background job + live progress) | ✅ | one run at a time on its own thread; publishes an immutable snapshot polled by REST/WS; `history()` from on-disk run records. 6 tests. |
-| Training REST API | ✅ | `GET /api/v1/training` (status + job + history), `POST /api/v1/training/runs` (start, 409 if busy), `GET /api/v1/training/runs[/{id}]`, `GET /api/v1/models[/{id}]`. `experiments` + `replay` still 404 (§98). |
+| Training REST API | ✅ | `GET /api/v1/training` (status + job + history), `POST /api/v1/training/runs` (start, 409 if busy), `GET /api/v1/training/runs[/{id}]`, `GET /api/v1/models[/{id}]`. `replay` still 404 (§98). |
 | Training WebSocket progress | ✅ | `training_update` frame (`{seq, running, job:{phase, episode, progress, returns, last_episode:{return, losses, metrics}, ...}}`) pushed on every published change; real episode measurements only (§84). |
 | Training Lab UI (`#/training`) | ✅ | hash route (no react-router). Legend spells out **TRAINING vs EVALUATION vs LIVE INFERENCE**. Start-a-run form (agent/episodes/scenario/seed/checkpoint-every → `POST /training/runs`), live-run panel (progress bar, episode-return sparkline, last-episode losses/metrics — fed by the `training_update` WS frame, REST-polled fallback), finished-runs + model-registry tables with status badges. All values are real backend measurements (§84). 4 vitest specs. |
-| Trained-vs-fixed comparison UI | ⬜ | **R9 P1** — eval JSON reports exist; real `GET /api/v1/experiments` + Experiment Lab (scenario/controller/model/seed select, honest Fixed-Time vs AI metric table with absolute + % diff + winner/direction) is the next work item |
+| `ExperimentService` (background comparison job + live progress) | ✅ | **R9 P1.** Mirrors `TrainingService`: one experiment at a time on its own thread, publishes an immutable snapshot polled by REST/WS. Controllers `fixed_time \| a2c \| dqn`; per-agent model selector `untrained \| active \| latest \| <registry id>` resolved to a checkpoint **up front** (fail-fast, never a fake path). Reproducibility blob frozen at start (config digest, git sha, seeds, reward weights, decision/step cadence, torch version). 6 tests. |
+| Experiments REST + WS + persistence | ✅ | `GET /api/v1/experiments?history=` (snapshot + past runs), `POST /api/v1/experiments` (202; 409 busy, 404 unknown scenario, 422 bad controllers/seeds/missing checkpoint), `GET /api/v1/experiments/{id}` (full detail). New `experiments` SQLite table (scenario, controllers, seeds, baseline, reproducibility, comparison blob, per-controller results, status). `experiment_update` WS frame. +8 tests (store + integration). |
+| Trained-vs-fixed comparison UI | ✅ | **R9 P1** — Experiment Lab (`#/experiments`): scenario select, controller checkboxes (Fixed-Time / A2C / DQN) with per-agent model selector, seed list, optional episode length → `POST /experiments`; live progress panel; past-experiments table; **honest `ComparisonTable`** — baseline column always shown (never % without absolute values, §16), per-metric direction (↓/↑), absolute Δ + direction-aware % (green only when it moved the *better* way), "within noise" when \|Δ\| ≤ combined 95% CI, winner = best controller only when it clears the runner-up by more than their combined CI. Fed by `experiment_update` WS frame + REST poll. +9 vitest. |
 | Trained checkpoint wired into live `SimulationManager` | ✅ | `POST /api/v1/simulation/model {agent, mode, version?}` + `set_model` WS command. `mode:"trained"` loads the agent's `active` (else latest) registry checkpoint, validates the file exists **and** that `trained_episodes > 0` post-load — otherwise 400 and the agent is left untouched (no fake `is_trained`, §84/§114). `mode:"untrained"` always restores fresh weights. Status carries `model_modes` + `model_sources`; agent `is_trained` flips honestly. Safety stays authoritative in both modes (§113). Front end: `ModelModeBar` on the dashboard (per-agent UNTRAINED/TRAINED toggle + honest badge). Tests: +6 pytest (integration + live-swap with a real checkpoint), +2 vitest. |
 
-## R9 remaining work — not started (priority order)
+## R9 remaining work (priority order)
 
 | P | Item | Notes |
 |---|---|---|
-| P1 | Evaluation correctness + comparison UI | real `GET /api/v1/experiments` backed by the evaluation harness + persistence; Experiment Lab (§16) — scenario/controller/model/seed(s) select, run, honest Fixed-Time vs AI table (absolute diff + % diff + winner + better-direction, lower-vs-higher interpreted correctly, never % without baseline values), multi-seed aggregate, reproducibility record |
+| P1 | Evaluation correctness + comparison UI | ✅ **done 2026-09-08** — `ExperimentService` + `experiments` REST/WS/persistence + Experiment Lab with the honest `ComparisonTable` (see Slice 2 table). Multi-seed mean ± 95% CI, reproducibility blob, direction-aware improvement %, never % without baseline values. |
 | P2 | Preset + custom scenario system | expand presets to the 8 required (§8A: NORMAL, RUSH HOUR, EMERGENCY RESPONSE, UNEQUAL DEMAND, STOP-GO EFFICIENCY, ROAD BLOCKAGE, SAFETY/VIOLATION, MIXED CRISIS) with name/description/objective/AI-focus/difficulty; custom builder (§8B) with all user-safe params, validation, human-readable preview, SAVE/LOAD/DUPLICATE/DELETE (persisted); safety layer never user-disableable |
 | P3 | Replay + inspectors | lightweight replay (§18: play/pause/seek/step/speed/events), `GET /api/v1/replay`; Vehicle / Emergency / Signal / AI-Coordination inspectors (§19) |
 | P4 | Export + presentation mode | CSV + JSON export (§23, HTML desirable); presentation/demo mode (§24) — reduced controls, clean narrative |

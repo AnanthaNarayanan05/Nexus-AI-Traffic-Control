@@ -8,6 +8,7 @@ import { EventTimeline } from '../components/EventTimeline';
 import { MetricsRow } from '../components/MetricsRow';
 import { ModelModeBar } from '../components/ModelModeBar';
 import { SimulationStage } from '../components/SimulationStage';
+import { ExperimentLab } from '../experiments/ExperimentLab';
 import { api } from '../lib/api';
 import { useHashRoute } from '../lib/hashRoute';
 import { useSimStore } from '../store';
@@ -67,9 +68,21 @@ export function App() {
         <button className={route === 'training' ? 'active' : ''} onClick={() => go('training')}>
           Training Lab
         </button>
+        <button
+          className={route === 'experiments' ? 'active' : ''}
+          onClick={() => go('experiments')}
+        >
+          Experiment Lab
+        </button>
       </nav>
 
-      {route === 'training' ? <TrainingLab /> : <Dashboard />}
+      {route === 'training' ? (
+        <TrainingLab />
+      ) : route === 'experiments' ? (
+        <ExperimentLab />
+      ) : (
+        <Dashboard />
+      )}
     </div>
   );
 }

@@ -32,6 +32,7 @@ import {
   onSimulationState,
   useAgentStore,
   useEventStore,
+  useExperimentStore,
   useSimStore,
   useTrainingStore,
   wireSocket,
@@ -75,6 +76,7 @@ beforeEach(() => {
   useAgentStore.setState({ agents: {}, coordination: null });
   useEventStore.setState({ events: [], filters: new Set(ALL_CATEGORIES) });
   useTrainingStore.setState({ snapshot: null });
+  useExperimentStore.setState({ snapshot: null });
 });
 
 describe('connection state', () => {
@@ -166,6 +168,21 @@ describe('frame dispatch', () => {
     const snap = useTrainingStore.getState().snapshot;
     expect(snap).toMatchObject({ seq: 4, running: true });
     expect(snap?.job).toMatchObject({ run_id: 'a2c-x', episode: 3 });
+  });
+
+  it('experiment_update lands in the experiment store verbatim', () => {
+    expect(useExperimentStore.getState().snapshot).toBeNull();
+    dispatch({
+      type: 'experiment_update',
+      payload: {
+        seq: 7,
+        running: true,
+        job: { experiment_id: 'exp-1', phase: 'running', episodes_done: 2, episodes_total: 6 },
+      },
+    });
+    const snap = useExperimentStore.getState().snapshot;
+    expect(snap).toMatchObject({ seq: 7, running: true });
+    expect(snap?.job).toMatchObject({ experiment_id: 'exp-1', episodes_done: 2 });
   });
 
   it('ignores unknown frame types without throwing', () => {

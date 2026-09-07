@@ -441,6 +441,76 @@ export interface EvalComparison {
   >;
 }
 
+/* ---------------------------------------------------------------- experiments */
+
+export type ExperimentController = 'fixed_time' | 'a2c' | 'dqn';
+export type ExperimentModelMode = 'untrained' | 'active' | 'latest' | string;
+export type ExperimentPhase = 'running' | 'completed' | 'failed';
+
+/** One controller's per-metric aggregates over the experiment's seeds. */
+export interface ExperimentResult {
+  label: string;
+  controller: ExperimentController;
+  scenario: string;
+  model_version: string | null;
+  checkpoint: string | null;
+  registry_id: string | null;
+  model_mode: string;
+  seeds: number[];
+  aggregates: Record<string, { n: number; mean: number; median: number; std: number; min: number; max: number; ci_half_width: number }>;
+  episodes: { seed: number; decisions: number; safety_overrides: number; metrics: Record<string, number> }[];
+}
+
+export interface ExperimentJob {
+  experiment_id: string;
+  name: string;
+  scenario: string;
+  controllers: ExperimentController[];
+  seeds: number[];
+  baseline: string;
+  episode_seconds: number | null;
+  phase: ExperimentPhase;
+  current_controller: string | null;
+  episodes_done: number;
+  episodes_total: number;
+  progress: number;
+  started_at: string;
+  finished_at: string | null;
+  wall_time_s: number;
+  error: string | null;
+  comparison: EvalComparison | null;
+  results: ExperimentResult[] | null;
+  reproducibility: Record<string, unknown>;
+}
+
+export interface ExperimentSnapshot {
+  seq: number;
+  running: boolean;
+  job: ExperimentJob | null;
+  history?: ExperimentSummary[];
+}
+
+export interface ExperimentSummary {
+  id: string;
+  name: string;
+  created_at: string;
+  finished_at: string | null;
+  wall_time_s: number;
+  scenario: string;
+  controllers: ExperimentController[];
+  seeds: number[];
+  episode_seconds: number | null;
+  baseline: string;
+  status: ExperimentPhase;
+  error: string | null;
+}
+
+export interface ExperimentDetail extends ExperimentSummary {
+  reproducibility: Record<string, unknown>;
+  comparison: EvalComparison | null;
+  results: ExperimentResult[] | null;
+}
+
 export interface HelloPayload {
   protocol_version: string;
   config_digest: string;
@@ -473,4 +543,5 @@ export type Frame =
       payload: { code: string; message: string; detail?: Record<string, unknown> };
     }
   | { type: 'training_update'; seq: number; t: number; payload: TrainingSnapshot }
+  | { type: 'experiment_update'; seq: number; t: number; payload: ExperimentSnapshot }
   | { type: 'pong'; seq: number; t: number; payload: { server_time: number } };

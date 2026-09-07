@@ -134,7 +134,8 @@ def _agent_decider(agent) -> Decider:
 # --------------------------------------------------------------------- public API
 def evaluate(controller: str, *, scenario_id: str, seeds: list[int],
              checkpoint: str | Path | None = None, label: str | None = None,
-             episode_seconds: float | None = None) -> EvalResult:
+             episode_seconds: float | None = None,
+             on_episode: Callable[[EvalEpisode], None] | None = None) -> EvalResult:
     scenario = get_scenario(scenario_id)
     if episode_seconds is not None:
         scenario.duration_s = float(episode_seconds)
@@ -154,7 +155,12 @@ def evaluate(controller: str, *, scenario_id: str, seeds: list[int],
     else:
         raise KeyError(f"unknown controller '{controller}'")
 
-    episodes = [_run_episode(decider, scenario, s, mode=mode) for s in seeds]
+    episodes: list[EvalEpisode] = []
+    for s in seeds:
+        ep = _run_episode(decider, scenario, s, mode=mode)
+        episodes.append(ep)
+        if on_episode is not None:
+            on_episode(ep)
 
     aggregates: dict[str, dict[str, float]] = {
         key: summarise_series([e.metrics[key] for e in episodes]) for key in METRIC_KEYS

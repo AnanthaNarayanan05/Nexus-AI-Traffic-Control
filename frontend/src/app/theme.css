@@ -1036,3 +1036,173 @@ input[type='range'] {
   font-size: 9.5px;
   letter-spacing: 0.03em;
 }
+
+/* ------------------------------------------------------------------ experiment lab */
+
+.cmp-controllers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 9px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+}
+
+.cmp-controller-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cmp-check {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.cmp-check input {
+  width: auto;
+  margin: 0;
+}
+
+.cmp-controller-row select {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  padding: 3px 5px;
+  font: inherit;
+  font-size: 10.5px;
+}
+
+.cmp {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.cmp-caption {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.cmp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+  font-family: var(--mono);
+}
+
+.cmp-table th {
+  text-align: left;
+  padding: 4px 7px;
+  color: var(--text-faint);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.cmp-table td {
+  padding: 4px 7px;
+  border-bottom: 1px solid var(--border-soft);
+  color: var(--text-dim);
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.cmp-table tr.cmp-group td {
+  padding-top: 8px;
+  color: var(--text-faint);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+}
+
+.cmp-metric {
+  color: var(--text);
+}
+
+.cmp-unit {
+  color: var(--text-faint);
+}
+
+.cmp-dir {
+  text-align: center;
+  color: var(--text-dim);
+}
+
+.cmp-base-col {
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+}
+
+.cmp-base-tag {
+  display: block;
+  font-size: 8.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.cmp-cell-mean {
+  display: block;
+  color: var(--text);
+}
+
+.cmp-delta {
+  display: block;
+  font-size: 9.5px;
+  color: var(--text-faint);
+  white-space: pre;
+}
+
+.cmp-delta.up {
+  color: var(--green);
+}
+
+.cmp-delta.down {
+  color: var(--red);
+}
+
+.cmp-delta.flat {
+  color: var(--text-faint);
+}
+
+.cmp-winner {
+  color: var(--text-dim);
+}
+
+.cmp-foot {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: var(--text-faint);
+}
+
+.cmp-foot .cmp-delta {
+  display: inline;
+  font-size: 10px;
+}
+
+tr.cmp-row-click {
+  cursor: pointer;
+}
+
+tr.cmp-row-click:hover {
+  background: rgba(77, 141, 255, 0.08);
+}
+
+tr.cmp-row-active {
+  background: rgba(77, 141, 255, 0.14);
+}

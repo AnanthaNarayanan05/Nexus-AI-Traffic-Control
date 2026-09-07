@@ -1,16 +1,16 @@
 /**
- * Minimal hash router. The project has no react-router dependency and only needs two
- * top-level views (the live dashboard and the Training Lab), so a `location.hash`
- * lookup with a subscription is enough.
+ * Minimal hash router. The project has no react-router dependency and only needs a
+ * handful of top-level views (the live dashboard, the Training Lab, the Experiment
+ * Lab), so a `location.hash` lookup with a subscription is enough.
  *
- * Routes are the bare hash without the `#`: '' (dashboard) and 'training'.
+ * Routes are the bare hash without the `#`: '' (dashboard), 'training', 'experiments'.
  */
 
 import { useCallback, useSyncExternalStore } from 'react';
 
-export type Route = '' | 'training';
+export type Route = '' | 'training' | 'experiments';
 
-const ROUTES: Route[] = ['', 'training'];
+const ROUTES: Route[] = ['', 'training', 'experiments'];
 
 function parse(hash: string): Route {
   const clean = hash.replace(/^#\/?/, '').split(/[?/]/)[0] as Route;

@@ -11,6 +11,7 @@ import type {
   EventMessage,
   Frame,
   MetricSnapshot,
+  ExperimentSnapshot,
   ScenarioSummary,
   SimStatus,
   TrainingSnapshot,
@@ -101,6 +102,17 @@ export const useTrainingStore = create<TrainingStore>(() => ({
   snapshot: null,
 }));
 
+/* ------------------------------------------------------------------ experiments */
+
+interface ExperimentStore {
+  /** Latest snapshot from the `experiment_update` WS channel, or null until one arrives. */
+  snapshot: ExperimentSnapshot | null;
+}
+
+export const useExperimentStore = create<ExperimentStore>(() => ({
+  snapshot: null,
+}));
+
 /* ------------------------------------------------------------------ wiring */
 
 /**
@@ -167,6 +179,9 @@ export function wireSocket(): void {
         break;
       case 'training_update':
         useTrainingStore.setState({ snapshot: frame.payload });
+        break;
+      case 'experiment_update':
+        useExperimentStore.setState({ snapshot: frame.payload });
         break;
       default:
         break;

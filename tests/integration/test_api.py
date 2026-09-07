@@ -247,9 +247,40 @@ def test_metrics_and_events(client):
 
 
 def test_deferred_endpoints_are_absent_not_stubbed(client):
-    # spec section 98: still-unimplemented features must not be faked
-    for path in ("/api/v1/experiments", "/api/v1/replay"):
-        assert client.get(path).status_code == 404
+    # spec section 98: still-unimplemented features must not be faked.
+    # /experiments is live as of R9 P1; /replay is still deferred (P3).
+    assert client.get("/api/v1/replay").status_code == 404
+
+
+def test_experiments_status_endpoint(client):
+    body = client.get("/api/v1/experiments").json()
+    assert "seq" in body and "running" in body
+    assert "job" in body                   # None until a run starts - never fabricated
+    assert body["job"] is None or body["job"]["phase"] in (
+        "running", "completed", "failed")
+    assert isinstance(body["history"], list)
+    assert client.get("/api/v1/experiments/exp-nope").status_code == 404
+
+
+def test_experiment_start_validates_input(client):
+    # unknown controller (ppo out of scope) -> 422
+    r = client.post("/api/v1/experiments", json={
+        "scenario": "normal", "controllers": ["fixed_time", "ppo"], "seeds": [1]})
+    assert r.status_code == 422
+    # unknown scenario -> 404
+    r = client.post("/api/v1/experiments", json={
+        "scenario": "does_not_exist", "controllers": ["fixed_time"], "seeds": [1]})
+    assert r.status_code == 404
+    # no seeds -> 422
+    r = client.post("/api/v1/experiments", json={
+        "scenario": "normal", "controllers": ["fixed_time"], "seeds": []})
+    assert r.status_code == 422
+    # a trained model that was never registered -> 422, no row created
+    r = client.post("/api/v1/experiments", json={
+        "scenario": "normal", "controllers": ["a2c"], "seeds": [1],
+        "models": {"a2c": "active"}})
+    assert r.status_code == 422
+    assert client.get("/api/v1/experiments").json()["history"] == []
 
 
 def test_training_status_endpoint(client):

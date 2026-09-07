@@ -2,6 +2,9 @@ import type {
   AgentInspectorPayload,
   AgentKey,
   AgentStatus,
+  ExperimentController,
+  ExperimentDetail,
+  ExperimentSnapshot,
   MetricSnapshot,
   ModelRecord,
   ScenarioSummary,
@@ -104,6 +107,19 @@ export const api = {
     return request<{ models: ModelRecord[] }>(`/models${qs ? `?${qs}` : ''}`);
   },
   model: (modelId: string) => request<ModelRecord>(`/models/${modelId}`),
+
+  // ---- experiments: Fixed-Time vs AI comparison (R9 P1) ----
+  experiments: (history = 20) =>
+    request<ExperimentSnapshot>(`/experiments?history=${history}`),
+  startExperiment: (body: {
+    name?: string | null;
+    scenario: string;
+    controllers: ExperimentController[];
+    seeds: number[];
+    models?: Record<string, string>;
+    episode_seconds?: number | null;
+  }) => post<ExperimentSnapshot>('/experiments', body),
+  experiment: (id: string) => request<ExperimentDetail>(`/experiments/${id}`),
 };
 
 export const API_BASE = BASE;

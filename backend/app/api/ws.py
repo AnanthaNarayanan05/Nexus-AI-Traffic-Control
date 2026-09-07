@@ -17,6 +17,7 @@ from app.api.serialize import agent_update_payload, compact_state
 from app.core.config import get_config
 from app.core.simulation_manager import get_manager
 from app.logging import get_logger
+from app.training.experiment_service import get_experiment_service
 from app.training.service import get_training_service
 
 log = get_logger("API")
@@ -40,6 +41,7 @@ class _Client:
         self.last_decision_id: str | None = None
         self.last_signal: str | None = None
         self.last_training_seq = -1
+        self.last_experiment_seq = -1
         self.closed = False
 
     def wants(self, channel: str) -> bool:
@@ -71,7 +73,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         "status": mgr.status(),
         "channels": ["simulation_state", "signal_update", "agent_update",
                      "coordination_update", "metric_update", "event", "status",
-                     "command_result", "training_update"],
+                     "command_result", "training_update", "experiment_update"],
         "stream_hz": cfg.simulation.stream_hz,
         "server_time": time.time(),
     })
@@ -125,6 +127,15 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                 if snap["job"] is not None:
                     await client.send("training_update",
                                       state.sim_time if state is not None else 0.0, snap)
+
+            # experiment progress: published by the experiment thread, polled here (§48-56)
+            exp = get_experiment_service()
+            if exp.seq != client.last_experiment_seq:
+                client.last_experiment_seq = exp.seq
+                esnap = exp.snapshot()
+                if esnap["job"] is not None:
+                    await client.send("experiment_update",
+                                      state.sim_time if state is not None else 0.0, esnap)
 
             await asyncio.sleep(interval)
     except (WebSocketDisconnect, RuntimeError, ConnectionError):
