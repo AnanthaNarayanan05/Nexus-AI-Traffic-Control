@@ -6,7 +6,8 @@ frame by frame. Nothing is reconstructed or synthesised (§84).
 
 Status: **implemented (R9 P3, 2026-09-08)** — capture on the running `SimulationManager`
 + `replays` persistence table + REST + Replay Lab UI (`#/replay`). The §19 inspectors
-(Vehicle / Emergency / Signal / AI-Coordination) are the other half of P3 and land next.
+(Vehicle / Emergency / Signal / AI-Coordination + DQN experience replay) are the other
+half of P3 and are also done — see [`inspectors.md`](inspectors.md).
 
 ## 1. What a replay frame is
 
@@ -146,9 +147,6 @@ only reads.
 
 ## 7. Not yet built
 
-- **§19 inspectors** — Vehicle / Emergency-vehicle / Signal / AI-Coordination "brain"
-  page, and the DQN experience-replay inspector (state → action → reward → next state →
-  done). R9 P3, next.
 - **Synchronized replay of an experiment's compared runs** on one timeline (§18) — needs
   the experiment runner to keep per-decision data, which today it does not (it records
   episode aggregates only). Deferred.

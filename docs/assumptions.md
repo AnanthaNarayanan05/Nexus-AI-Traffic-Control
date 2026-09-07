@@ -51,6 +51,23 @@ recorded here. `[PPT]` = fixed by the source; everything below is an engineering
   hard-capped at 5000 decision frames / 8000 events so a runaway session can't grow
   without bound. `data/nexus.db` remains a runtime artifact (`.gitignore`).
 
+## Inspectors (R9 §19, §41–47)
+- **A29. The inspectors read only; they never freeze the loop.** "Pause and inspect"
+  means the normal simulation pause — the inspector then renders whatever the last WS
+  frame / poll delivered. There is no separate frame-snapshot mechanism, so while the
+  loop runs the Coordination / Signal / Emergency tabs update at the stream rate and the
+  Vehicle / DQN tabs at their 2 s poll.
+- **A30. The Vehicle inspector polls `GET /simulation/state` every 2 s**, not the 20 Hz
+  stream — the stream's `compact_vehicles` drops accel / stops / fuel / CO₂ / movement to
+  save bandwidth, and per-vehicle detail is only wanted while that one tab is open. The
+  full-state endpoint already returns the complete dump; no endpoint was added.
+- **A31. The DQN replay buffer fills in inference mode.** `DQNAgent.observe()` records
+  every `state → action → reward → next-state → done` tuple to its fixed-capacity ring
+  regardless of `self.training`; `learn()` is still gated on `training`, so the live
+  policy is unaffected. This exists so the §17 experience-replay inspector shows real
+  transitions rather than an empty buffer or a synthesised table (§84). The sample shown
+  is drawn uniformly from the buffer, not in time order.
+
 ## Signal timing
 - **A6.** `min_green = 8 s`, `max_green = 60 s`, `yellow = 3 s`, `all_red = 2 s`,
   `emergency_max_priority = 45 s`. Typical urban values; all in `config.yaml`, all enforced by the safety

@@ -1645,3 +1645,383 @@ tr.cmp-row-active {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ================================================================= inspectors (R9 P3 §19) */
+
+.insp-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.insp-tabs button {
+  padding: 5px 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--text-dim);
+  cursor: pointer;
+}
+
+.insp-tabs button.active {
+  background: rgba(77, 141, 255, 0.16);
+  border-color: rgba(77, 141, 255, 0.42);
+  color: #b7d2ff;
+}
+
+/* pipeline (coordinator -> safety) */
+
+.insp-pipeline {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.insp-pipe-step {
+  flex: 1 1 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+}
+
+.insp-pipe-main {
+  font-family: var(--mono);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.insp-pipe-sub {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.insp-pipe-arrow {
+  align-self: center;
+  color: var(--text-faint);
+}
+
+/* priority ladder with glosses */
+
+.insp-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.insp-ladder-step {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+}
+
+.insp-ladder-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.insp-ladder-detail {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.insp-ladder-gloss {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-style: italic;
+}
+
+/* phase-score table */
+
+.insp-score-table {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-x: auto;
+}
+
+.insp-score-row {
+  display: grid;
+  grid-template-columns: 56px repeat(6, minmax(60px, 1fr));
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 10.5px;
+  font-family: var(--mono);
+  border-radius: 4px;
+}
+
+.insp-score-head {
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+
+.insp-score-win {
+  background: rgba(77, 141, 255, 0.1);
+}
+
+/* agent recommendation cards */
+
+.insp-recs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.insp-rec {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-left: 3px solid var(--border);
+  border-radius: 5px;
+}
+
+.insp-rec.won {
+  background: rgba(77, 141, 255, 0.08);
+}
+
+.insp-rec-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 11.5px;
+}
+
+.insp-rec-action {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.insp-rec-nums {
+  font-size: 10px;
+  color: var(--text-faint);
+  font-family: var(--mono);
+}
+
+.insp-rec-reason {
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.insp-kv-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0 12px;
+  margin-top: 3px;
+}
+
+/* signal timers */
+
+.insp-timers {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 8px 0;
+}
+
+.insp-timer {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+}
+
+.insp-timer-val {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  font-family: var(--mono);
+}
+
+.insp-bar {
+  display: block;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.insp-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* per-approach aspect */
+
+.insp-aspect-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.insp-aspect {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+}
+
+.insp-aspect-dir {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+/* vehicle inspector */
+
+.insp-veh-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-size: 10.5px;
+  color: var(--text-dim);
+}
+
+.insp-veh-filters label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.insp-veh-filters select {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text);
+  font-size: 10.5px;
+  padding: 2px 4px;
+}
+
+.insp-veh-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.insp-veh-row {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 0.9fr 0.8fr 0.7fr 0.9fr;
+  gap: 6px;
+  padding: 4px 6px;
+  font-size: 10.5px;
+  font-family: var(--mono);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.insp-veh-row:not(.insp-veh-head):hover {
+  background: var(--bg-inset);
+}
+
+.insp-veh-head {
+  color: var(--text-faint);
+  cursor: default;
+  position: sticky;
+  top: 0;
+  background: var(--bg-panel);
+}
+
+.insp-veh-sel {
+  background: rgba(77, 141, 255, 0.14);
+}
+
+.insp-badges {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+/* dqn experience-replay transitions */
+
+.insp-tr-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.insp-tr {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 6px;
+}
+
+.insp-tr-state {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.insp-tr-mid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-family: var(--mono);
+}
+
+.insp-pos {
+  color: var(--green);
+}
+
+.insp-neg {
+  color: var(--red);
+}
+
+@media (max-width: 720px) {
+  .insp-timers {
+    grid-template-columns: 1fr;
+  }
+  .insp-aspect-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .insp-tr {
+    grid-template-columns: 1fr;
+  }
+  .insp-veh-row {
+    grid-template-columns: 1.4fr 1fr 0.8fr 0.8fr;
+  }
+  .insp-veh-row span:nth-child(5),
+  .insp-veh-row span:nth-child(6) {
+    display: none;
+  }
+  .insp-score-row {
+    grid-template-columns: 48px repeat(6, minmax(52px, 1fr));
+  }
+}

@@ -54,7 +54,7 @@ Client commands are also available as REST (`POST /api/v1/...`) for scripting an
 ```
 GET  /api/v1/health
 GET  /api/v1/config                       resolved config digest
-GET  /api/v1/simulation/state             one snapshot
+GET  /api/v1/simulation/state             one full snapshot incl. per-vehicle detail (Vehicle inspector polls this)
 POST /api/v1/simulation/start|pause|reset
 POST /api/v1/simulation/mode              { mode }
 POST /api/v1/simulation/manual            { action }           (MANUAL mode)
@@ -66,7 +66,7 @@ POST /api/v1/scenarios/{id}/duplicate     { new_id, name? }  copy any scenario t
 DELETE /api/v1/scenarios/{id}             delete custom (409 preset, 404 unknown)
 POST /api/v1/scenarios/load               { id | inline config }
 GET  /api/v1/agents                       status of all three
-GET  /api/v1/agents/{a2c|dqn|ppo}         full inspector payload (+ ?paused_at=)
+GET  /api/v1/agents/{a2c|dqn|ppo}         full inspector payload (+ ?paused_at=); dqn carries extra.replay_sample for the §17 inspector
 GET  /api/v1/coordination/last
 GET  /api/v1/safety/overrides             recent override log
 GET  /api/v1/metrics                      current + history window

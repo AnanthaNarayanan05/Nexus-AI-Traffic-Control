@@ -123,7 +123,12 @@ export function CommandBar() {
       <button
         className="btn"
         disabled={!online || busy}
-        onClick={() => send('inject', { event: 'emergency', args: {} })}
+        onClick={() =>
+          send('inject', {
+            event: 'spawn_emergency',
+            args: { approach: ['N', 'E', 'S', 'W'][Math.floor(Math.random() * 4)] },
+          })
+        }
         title="Spawn an emergency vehicle on a random approach"
       >
         🚑 Inject

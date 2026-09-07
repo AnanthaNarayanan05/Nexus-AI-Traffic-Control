@@ -162,8 +162,10 @@ class DQNAgent(BaseAgent):
 
     # ---------------------------------------------------------------- learning
     def observe(self, state, action_index, reward, next_state, done, info=None) -> None:
-        if not self.training:
-            return
+        # Transitions are recorded whether or not the agent is training: in inference
+        # mode `learn()` is a no-op, but the buffer still feeds the Experience Replay
+        # inspector (spec section 17) with real state -> action -> reward -> next-state
+        # -> done tuples from the live loop. The buffer is a fixed-capacity ring.
         self.buffer.add(Transition(
             state=self._features(state), action=int(action_index), reward=float(reward),
             next_state=self._features(next_state), done=bool(done),

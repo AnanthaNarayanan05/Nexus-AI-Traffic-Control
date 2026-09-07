@@ -5,6 +5,7 @@ import type {
   ExperimentController,
   ExperimentDetail,
   ExperimentSnapshot,
+  FullSimulationState,
   MetricSnapshot,
   ModelRecord,
   ReplayDetail,
@@ -59,6 +60,8 @@ export const api = {
   config: () => request<Record<string, unknown>>('/config'),
 
   status: () => request<SimStatus>('/simulation/status'),
+  /** Full state dump incl. per-vehicle detail — used by the Vehicle inspector on demand. */
+  simulationState: () => request<FullSimulationState>('/simulation/state'),
   start: () => post<SimStatus>('/simulation/start'),
   pause: () => post<SimStatus>('/simulation/pause'),
   reset: (scenario_id?: string, seed?: number) =>

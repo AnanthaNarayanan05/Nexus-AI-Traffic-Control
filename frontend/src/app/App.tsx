@@ -9,6 +9,7 @@ import { MetricsRow } from '../components/MetricsRow';
 import { ModelModeBar } from '../components/ModelModeBar';
 import { SimulationStage } from '../components/SimulationStage';
 import { ExperimentLab } from '../experiments/ExperimentLab';
+import { InspectorLab } from '../inspectors/InspectorLab';
 import { api } from '../lib/api';
 import { useHashRoute } from '../lib/hashRoute';
 import { ReplayLab } from '../replay/ReplayLab';
@@ -85,6 +86,9 @@ export function App() {
         <button className={route === 'replay' ? 'active' : ''} onClick={() => go('replay')}>
           Replay
         </button>
+        <button className={route === 'inspect' ? 'active' : ''} onClick={() => go('inspect')}>
+          Inspectors
+        </button>
       </nav>
 
       {route === 'training' ? (
@@ -95,6 +99,8 @@ export function App() {
         <ScenarioLab />
       ) : route === 'replay' ? (
         <ReplayLab />
+      ) : route === 'inspect' ? (
+        <InspectorLab />
       ) : (
         <Dashboard />
       )}

@@ -130,6 +130,32 @@ def test_dqn_exposes_raw_q_values_in_inspector():
     assert set(q) == set(payload.action_labels)
 
 
+def test_dqn_records_transitions_in_inference_mode_without_learning():
+    # The live DQN runs in inference mode. observe() must still fill the replay buffer so
+    # the Experience Replay inspector (spec section 17) has real state -> action -> reward
+    # -> next-state -> done tuples to show, while learn() stays a no-op until training.
+    from app.agents.dqn.agent import ACTION_LABELS
+
+    agent = DQNAgent(seed=0)
+    assert agent.training is False
+    st = make_state()
+    assert len(agent.buffer) == 0
+
+    for _ in range(5):
+        rec = agent.act(st)
+        agent.observe(st, rec.action_index, -0.1, st, False)
+
+    assert len(agent.buffer) == 5
+    assert agent.learn() == {}  # inference mode: no gradient step
+
+    sample = agent.replay_sample(3)
+    assert len(sample) == 3
+    assert set(sample[0]) == {
+        "action", "reward", "done", "state_summary", "next_state_summary", "info"
+    }
+    assert sample[0]["action"] in ACTION_LABELS
+
+
 def test_agents_keep_objective_ownership_separate():
     # the three algorithms must never be collapsed into one (PPT source of truth)
     assert A2CAgent(seed=0).name == AgentName.A2C

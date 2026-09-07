@@ -19,22 +19,29 @@ algorithm roster:
   touch A2C + DQN. New PPO training runs are rejected; `GET /api/v1/agents/ppo` → 404;
   `POST /simulation/model {agent:"ppo"}` → rejected; `PPOStrip.tsx` is unmounted.
 - R9 priority order for remaining work: ~~**P1** evaluation correctness + comparison UI~~ ✅ →
-  ~~**P2** preset/custom scenario system~~ ✅ → **P3** replay (✅ engine) + inspectors (⬜) →
+  ~~**P2** preset/custom scenario system~~ ✅ → ~~**P3** replay + inspectors~~ ✅ →
   **P4** export + presentation mode → **P5** UI polish → **P6** performance / a11y / responsive →
   **P7** docs / QA / reproducibility / demo readiness.
 - **P1 done (2026-09-08):** `ExperimentService` + `GET/POST /api/v1/experiments` +
   `experiments` persistence table + Experiment Lab (`#/experiments`) with the honest
   Fixed-Time vs AI comparison table. See the Slice 2 table below and
   [`experiments.md`](experiments.md).
-- **P3 replay engine done (2026-09-08):** `SimulationManager` captures the live decision
-  timeline on episode-complete / reset / explicit capture / shutdown; `replays` persistence
-  table + `ReplayStore` (self-pruning to the newest 40, §90); `GET /api/v1/replay`,
+- **P3 done (2026-09-08):** *(a)* replay engine — `SimulationManager` captures the live
+  decision timeline on episode-complete / reset / explicit capture / shutdown; `replays`
+  persistence table + `ReplayStore` (self-pruning to the newest 40, §90); `GET /api/v1/replay`,
   `POST /api/v1/replay/capture`, `GET /api/v1/replay/{id}[/at?t=]`, `DELETE /api/v1/replay/{id}`;
   Replay Lab (`#/replay`) — a client-side player (play/pause/step/scrub/speed) over the
   captured decision frames, showing the agent → coordinator → authoritative-safety pipeline,
   reward decomposition, metrics and events at every decision. Decision-cadence, not
-  physics-cadence: no vehicle-level playback, stated in the UI. The §19 inspectors are the
-  remaining P3 item. See the Slice 2 table below and [`replay.md`](replay.md).
+  physics-cadence: no vehicle-level playback, stated in the UI. *(b)* §19 inspectors —
+  `#/inspect` (`InspectorLab.tsx`): Coordination "brain" (priority ladder + phase scores +
+  per-agent recommendation + authoritative safety verdict), Signal state machine, Emergency
+  vehicle + A2C priority response, Vehicle inspector (per-vehicle physics from
+  `GET /simulation/state`, 2 s poll), DQN experience-replay inspector (§17 — state → action
+  → reward → next state → done, from the live buffer). `DQNAgent.observe()` now records
+  transitions in inference mode too (buffer only; `learn()` still gated on `training`), so
+  the §17 inspector shows real transitions. See the Slice 2 table below and
+  [`replay.md`](replay.md) / [`inspectors.md`](inspectors.md).
 - **P2 done (2026-09-08):** all 8 §8A preset scenarios with objective / AI-focus /
   difficulty metadata; `ScenarioConfig` bounds validation (out-of-range → 422, unknown
   field rejected, safety layer has no scenario switch); `scenarios` persistence table +
@@ -47,8 +54,8 @@ algorithm roster:
 
 Verified end-to-end 2026-09-07: built-in sim → FastAPI → WebSocket → PixiJS render →
 agent decision loop → coordination → safety → applied phase → measured metrics,
-all in the browser. `pytest tests/` (225, incl. Slice 2 + R9 deprecation + P1 experiments +
-P2 scenarios + P3 replay) + `vitest` (56) green; `npm run build` + `eslint` + `tsc -b` clean.
+all in the browser. `pytest tests/` (226, incl. Slice 2 + R9 deprecation + P1 experiments +
+P2 scenarios + P3 replay + inspectors) + `vitest` (66) green; `npm run build` + `eslint` + `tsc -b` clean.
 
 | Area | State | Notes |
 |---|---|---|
@@ -68,13 +75,13 @@ P2 scenarios + P3 replay) + `vitest` (56) green; `npm run build` + `eslint` + `t
 | Metrics aggregator | ✅ | rolling + episode windows; fuel/CO₂ flagged ESTIMATED |
 | FastAPI app + REST + WebSocket hub | ✅ | `command_result` channel separate from `status` |
 | `SimulationManager` decision loop | ✅ | own thread; reward for decision N realised at N+1 (on-policy order) |
-| Frontend shell + command bar | ✅ | start/pause/step/reset, mode, scenario, speed, inject; live/paused, sim clock, seed, cfg digest |
+| Frontend shell + command bar | ✅ | start/pause/step/reset, mode, scenario, speed, inject (🚑 → `spawn_emergency` on a random approach); live/paused, sim clock, seed, cfg digest |
 | PixiJS `SimulationStage` | ✅ | config-driven geometry, roads, vehicles (eased), signal lamps, queue counts, view-radius zoom |
 | A2C / DQN dashboard panels | ✅ | actor bars, critic V(s), Q(s,a), queue pressure, reward decomposition, honest trained/UNTRAINED badge. `PPOStrip.tsx` retained but ⚠️ unmounted (R9). |
 | Coordination bar | ✅ | A2C + DQN recs → winner + basis → safety verdict + ladder trace + score breakdown (engine still accepts N recs; PPO no longer feeds it) |
 | Metrics row + event timeline | ✅ | filterable TRAFFIC/AI/EMERGENCY/SAFETY/VIOLATION/SYSTEM; server errors surfaced verbatim |
-| Agent inspector REST polling | ✅ | `GET /agents/{name}` on a 2 s poll; not streamed (cost) |
-| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation, experiments, scenarios, replay) | ✅ | `pytest tests/` → **225 pass** (incl. R9: PPO rejected from live inference + agent inspector; P1: experiment store + service + API; P2: preset-metadata completeness + `ScenarioStore` CRUD + validation + persistence round-trip + scenario API; P3: `ReplayStore` CRUD + prune + replay capture/list/seek/delete through the API); `vitest` → **56 pass** (incl. `ACTIVE_AGENTS` scope lock, `ComparisonTable` honesty rules, `ExperimentLab`, `ScenarioLab`, `ReplayLab`). PPO unit tests (agent contract, reward, state builder) retained and green — legacy code stays covered. |
+| Agent inspector REST polling | ✅ | `GET /agents/{name}` on a 2 s poll; not streamed (cost). DQN payload `extra.replay_sample` feeds the §17 experience-replay inspector. |
+| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation, experiments, scenarios, replay) | ✅ | `pytest tests/` → **226 pass** (incl. R9: PPO rejected from live inference + agent inspector; P1: experiment store + service + API; P2: preset-metadata completeness + `ScenarioStore` CRUD + validation + persistence round-trip + scenario API; P3: `ReplayStore` CRUD + prune + replay capture/list/seek/delete through the API + DQN records transitions in inference mode without learning); `vitest` → **66 pass** (incl. `ACTIVE_AGENTS` scope lock, `ComparisonTable` honesty rules, `ExperimentLab`, `ScenarioLab`, `ReplayLab`, `InspectorLab`). PPO unit tests (agent contract, reward, state builder) retained and green — legacy code stays covered. |
 
 ## Slice 2 — training loops  *(in progress)*
 
@@ -110,6 +117,8 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 | Replay capture + `replays` persistence | ✅ | **R9 P3.** `SimulationManager` keeps the current run's decision timeline (`_timeline` / `_timeline_events`, hard-capped 5000 / 8000) and persists a `ReplayRecord` on episode-complete, run teardown (reset / load scenario), explicit capture, and shutdown — only when the run has ≥ 3 decisions (else no-op / 409). Fresh `_run_id` / `_run_seed` minted per run so the stored `id` / `label` / `seed` describe the run actually played. New `replays` SQLite table (label, scenario, seed, mode, model modes, config digest, duration, decision count, episode-complete flag, `timeline` = list[`DecisionRecord`], `events`, `episode_metrics` only when complete). `ReplayStore` facade — `save` upsert / `get` full / `list` summary-only / `delete` / `prune(keep=40)` (§90 storage cap, run on every capture) / `count`. +6 pytest (`persistence/test_replay_store.py`). Doc: [`replay.md`](replay.md). |
 | Replay REST | ✅ | **R9 P3.** `GET /api/v1/replay?limit=` (summary, newest first, no timeline), `POST /api/v1/replay/capture` (201 + summary; 409 when the run has < 3 decisions), `GET /api/v1/replay/{id}` (full timeline + events + episode metrics; 404), `GET /api/v1/replay/{id}/at?t=` (the decision frame at-or-before `t` + prev/next markers; 404 unknown / empty), `DELETE /api/v1/replay/{id}` (404 unknown). Capture / delete route through the loop thread; reads hit `ReplayStore` directly. No `replay_update` WS frame — a replay is immutable and playback is client-side. +3 pytest (`integration/test_api.py`). |
 | Replay Lab UI (`#/replay`) | ✅ | **R9 P3** — hash route (no react-router). Captured-replays list (scenario, FULL EPISODE / PARTIAL badge, `seed · mode · N decisions · duration`, per-row Delete, Refresh, **Capture current run** with the friendly 409 message); newest auto-opens. Client-side transport — ⏮ ◀ ▶/⏸ ▶ ⏭, speed 0.5–4×, range scrubber, `decision N / total · t` readout, play auto-stops at the end. Seven per-frame panels straight from the stored `DecisionRecord`: coordinator → **authoritative-safety** pipeline row, agent recommendations, coordination ladder + score breakdown, reward decomposition, metric snapshot, traffic state, events-up-to-here. Legend + pipeline state that where the coordinated choice and the applied phase differ, safety won (§113). "Vehicle-level playback is not captured" stated in the player (decision cadence, not physics cadence). 5 vitest specs (`ReplayLab.test.tsx`). |
+| DQN records transitions in inference mode (§17) | ✅ | **R9 P3.** `DQNAgent.observe()` always appends the real `state → action → reward → next-state → done` tuple to its fixed-capacity replay ring; `learn()` stays gated on `self.training`, so in the live loop this is pure observability — the policy is untouched. Without it the §17 inspector would have an empty buffer and a faked transition table is not allowed (§84). +1 pytest (`test_dqn_records_transitions_in_inference_mode_without_learning`). |
+| Inspectors UI (`#/inspect`) | ✅ | **R9 P3** (§19, §41–47) — hash route (no react-router). `InspectorLab.tsx`, five read-only pause-and-inspect tabs, all from data already on the wire (+ `GET /simulation/state` polled 2 s for the vehicle tab; no new endpoint). **Coordination brain** — pipeline row, priority ladder with per-rung glosses, phase-score table (candidate highlighted), full per-agent recommendation cards + `relevant_state`, authoritative safety verdict + "no agent can bypass" note; warn banner when safety rewrote the choice. **Signal** — phase SM, min/max-green bars, transition block, `allowed_next`, per-approach authoritative aspect. **Emergency vehicle** — active EV (id/type/approach/distance/speed/ETA), A2C priority-override state + action/reason, whether the current phase serves the EV approach. **Vehicle** — filterable list (approach / emergency / violator) + per-vehicle detail (accel, stops, fuel/CO₂ ESTIMATED, position, heading); "left the network" when it departs. **DQN experience replay** — buffer size, epsilon, sampled transitions as state → action → reward → next-state → done cards (§17). Empty states everywhere the backend has produced nothing yet; `—` never a fake zero (§84). 10 vitest specs (`InspectorLab.test.tsx`). Doc: [`inspectors.md`](inspectors.md). |
 
 ## R9 remaining work (priority order)
 
@@ -117,7 +126,7 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 |---|---|---|
 | P1 | Evaluation correctness + comparison UI | ✅ **done 2026-09-08** — `ExperimentService` + `experiments` REST/WS/persistence + Experiment Lab with the honest `ComparisonTable` (see Slice 2 table). Multi-seed mean ± 95% CI, reproducibility blob, direction-aware improvement %, never % without baseline values. |
 | P2 | Preset + custom scenario system | ✅ **done 2026-09-08** — 8 §8A presets with objective / AI-focus / difficulty; `ScenarioConfig` bounds validation (422 not clamp; `extra="forbid"` blocks smuggled knobs; no safety switch); `scenarios` table + `ScenarioStore`; `POST` / `DELETE` / `duplicate` REST; Scenario Lab (`#/scenarios`) preset browser + custom builder with plain-English preview + SAVE / DUPLICATE / DELETE / LOAD. See Slice 2 table + [`scenarios.md`](scenarios.md). |
-| P3 | Replay + inspectors | 🟡 **replay engine done 2026-09-08** — capture on the running `SimulationManager` + `replays` table + `GET/POST/DELETE /api/v1/replay[...]` + Replay Lab (`#/replay`) with client-side play/pause/seek/step/speed over the captured decision frames (§18, §54–56, §90). See Slice 2 table + [`replay.md`](replay.md). ⬜ **remaining:** Vehicle / Emergency / Signal / AI-Coordination inspectors + DQN experience-replay inspector (§19). |
+| P3 | Replay + inspectors | ✅ **done 2026-09-08** — *(a)* replay engine: capture on the running `SimulationManager` + `replays` table + `GET/POST/DELETE /api/v1/replay[...]` + Replay Lab (`#/replay`) with client-side play/pause/seek/step/speed over the captured decision frames (§18, §54–56, §90); *(b)* §19 inspectors: `#/inspect` (`InspectorLab.tsx`) — Coordination brain, Signal, Emergency vehicle, Vehicle, DQN experience replay (§17); `DQNAgent.observe()` records transitions in inference mode. See Slice 2 table + [`replay.md`](replay.md) / [`inspectors.md`](inspectors.md). |
 | P4 | Export + presentation mode | CSV + JSON export (§23, HTML desirable); presentation/demo mode (§24) — reduced controls, clean narrative |
 | P5 | Premium UI polish | |
 | P6 | Performance (60 FPS) · accessibility · responsive | |

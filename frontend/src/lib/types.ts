@@ -125,6 +125,58 @@ export interface CompactState {
   vehicles: VehicleArrays;
 }
 
+/**
+ * One vehicle from the full `GET /api/v1/simulation/state` dump (backend `VehicleSnapshot`).
+ * Richer than the 20 Hz stream's `VehicleArrays` — carries accel / stops / fuel / CO₂ /
+ * movement — so the Vehicle inspector fetches it on demand rather than from the stream.
+ */
+export interface VehicleDetail {
+  id: string;
+  type: string;
+  approach: Approach;
+  lane: number;
+  movement: string;
+  x: number;
+  y: number;
+  heading: number;
+  speed_mps: number;
+  accel_mps2: number;
+  wait_s: number;
+  stops: number;
+  fuel_l: number;
+  co2_kg: number;
+  is_emergency: boolean;
+  is_violator: boolean;
+  state: string;
+}
+
+/**
+ * One transition sampled from the DQN replay buffer for the Experience Replay inspector
+ * (spec §17). Mirrors `DQNAgent.replay_sample()` — state → action → reward → next → done.
+ */
+export interface DqnReplayTransition {
+  action: string;
+  reward: number;
+  done: boolean;
+  state_summary: Record<string, number>;
+  next_state_summary: Record<string, number>;
+  info: Record<string, unknown>;
+}
+
+/** The full simulation-state dump (`GET /api/v1/simulation/state`). */
+export interface FullSimulationState {
+  sim_time: number;
+  step: number;
+  control_mode: ControlMode;
+  signal: SignalState;
+  approaches: Record<Approach, ApproachState>;
+  emergency: EmergencyState;
+  safety: SafetySnapshot;
+  environment: { weather: string; time_of_day: string; blocked_lanes: unknown[] };
+  estimates: LiveEstimates;
+  vehicles: VehicleDetail[];
+}
+
 export interface RewardComponent {
   name: string;
   raw: number;
