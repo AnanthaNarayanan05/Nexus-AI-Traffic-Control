@@ -21,6 +21,7 @@ pytest-asyncio deprecation warning appears).
 | `coordination/test_safety.py` | one test per safety rule in `RULES` order + the `APPLIED` pass-through + validator bookkeeping. |
 | `simulation/` | same-seed reproducibility, different-seed divergence, `reset()` rewind, geometry vs `config.yaml`. |
 | `integration/test_api.py` | REST + WS surface through `TestClient` (lifespan on). Deferred endpoints (training / experiments / models / replay) asserted **absent**, not stubbed (spec §98). |
+| `training/test_training.py` | headless single-agent training: safety consulted on every decision (§113), episodes advance + `trained_episodes` increments, A2C runs real gradient steps, same-seed reproducibility, `TrainingManager` checkpoints round-trip. Short (~4 min sim) episodes. |
 
 Every `tests/` subdirectory has an `__init__.py` so `from tests.factories import ...`
 works under pytest's prepend import mode.

@@ -25,7 +25,7 @@ from typing import Any, Callable
 from app.agents.a2c import A2CAgent
 from app.agents.common.base import BaseAgent
 from app.agents.common.resolve import action_to_command
-from app.agents.common.rewards import RewardContext
+from app.agents.common.rewards import make_reward_context
 from app.agents.dqn import DQNAgent
 from app.agents.ppo import PPOAgent
 from app.control import FixedTimeController, manual_command
@@ -454,28 +454,13 @@ class SimulationManager:
             return {}, {}
 
         prev = pending.state
-        em_prev, em_curr = prev.emergency, state.emergency
-        emergency_cleared = max(0, em_curr.cleared_this_episode - em_prev.cleared_this_episode)
-        progress = 0.0
-        wait_delta = 0.0
-        if em_prev.active and em_curr.active and em_prev.vehicle_id == em_curr.vehicle_id:
-            progress = max(0.0, (em_prev.distance_m or 0.0) - (em_curr.distance_m or 0.0))
-        elif em_prev.active and emergency_cleared:
-            progress = em_prev.distance_m or 0.0
-        if em_curr.active:
-            wait_delta = max(0.0, _emergency_wait(state) - _emergency_wait(prev))
-        violations = max(0, state.safety.violations_total - prev.safety.violations_total)
-        phase_changed = state.signal.served_phase != prev.signal.served_phase
-
         rewards: dict[str, float] = {}
         breakdowns: dict[str, Any] = {}
         for name, agent in self.agents.items():
             action_name = pending.action_names.get(name, "MAINTAIN")
-            ctx = RewardContext(
-                prev=prev, curr=state, action_name=action_name, phase_changed=phase_changed,
-                vehicles_cleared=cleared, emergency_cleared=emergency_cleared,
-                emergency_progress_m=progress, emergency_wait_delta_s=wait_delta,
-                violations=violations, interval_s=self.decision_interval_s,
+            ctx = make_reward_context(
+                prev, state, action_name=action_name,
+                vehicles_cleared=cleared, interval_s=self.decision_interval_s,
             )
             rb: RewardBreakdown = agent.compute_reward(ctx)
             rewards[name.value] = round(rb.total, 4)
@@ -560,10 +545,6 @@ class SimulationManager:
 
 
 _AGENT_NAMES = {n.value for n in AgentName}
-
-
-def _emergency_wait(state: SimulationState) -> float:
-    return sum(v.wait_s for v in state.vehicles if v.is_emergency)
 
 
 def _state_summary(state: SimulationState) -> dict[str, Any]:

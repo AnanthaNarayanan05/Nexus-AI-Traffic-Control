@@ -22,8 +22,10 @@ data/experiments/*
 data/replays/*
 data/exports/*
 !data/**/.gitkeep
-models/*.pt
-models/*.zip
+models/**/*.pt
+models/**/*.zip
+models/**/*.json
+!models/.gitkeep
 *.db
 *.sqlite3
 !database/.gitkeep
