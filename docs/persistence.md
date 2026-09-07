@@ -4,17 +4,21 @@ Spec §55, §90. SQLite via SQLAlchemy 2 (`SQLAlchemy==2.0.36`, already a backen
 dependency). Store at `data/nexus.db` (override with `NEXUS_DB_URL`). Tests get a fresh
 temp database per test (autouse `_isolated_db` fixture in `tests/conftest.py`).
 
-`docs/experiments.md §5` lists the full target schema (experiments / runs / events /
-replays). **Slice 2 ships one table** — the model registry. The rest land with their
-slices; `app/persistence` is laid out so they slot in next to `ModelRecord`.
+Four tables so far: the model registry (`models`, Slice 2), experiments (`experiments`,
+R9 P1), user-saved scenarios (`scenarios`, R9 P2) and captured replays (`replays`, R9 P3).
+`app/persistence` follows one facade-per-table shape so the rest slot in next to
+`ModelRecord`.
 
 ## `app/persistence`
 
 | Module | Responsibility |
 |---|---|
 | `db.py` | one lazy process-wide `Engine` + `sessionmaker` from `settings.db_url`; `init_db()` (create tables), `session_scope()` (commit/rollback/close), `reset_engine_for_tests()` |
-| `models.py` | ORM tables. Today: `ModelRecord` (`models`) |
+| `models.py` | ORM tables: `ModelRecord` (`models`), `ExperimentRecord` (`experiments`), `ScenarioRecord` (`scenarios`), `ReplayRecord` (`replays`) |
 | `registry.py` | `ModelRegistry` — the write/read API over `models` |
+| `experiments.py` | `ExperimentStore` — create / complete / fail / get / list over `experiments` ([`experiments.md` §5](experiments.md)) |
+| `scenarios.py` | `ScenarioStore` — save (upsert) / get / list / delete over `scenarios` ([`scenarios.md`](scenarios.md)) |
+| `replays.py` | `ReplayStore` — save (upsert) / get / list / delete / `prune(keep=N)` / count over `replays` ([`replay.md` §3](replay.md)) |
 
 SQLite pragmas on connect: `foreign_keys=ON`, `journal_mode=WAL`.
 

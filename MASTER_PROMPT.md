@@ -14,9 +14,9 @@
 >   of the live loop, coordination, training workflow and primary UI. Every "A2C / DQN / PPO"
 >   phrasing below should be read as "A2C / DQN" for current work.
 > - **DQN objective** is stated by R9 as *efficiency / fuel / emissions / safety*.
-> - Remaining build priorities (R9 §35): P1 evaluation + comparison UI · P2 scenario system
->   (8 presets + custom builder) · P3 replay + inspectors · P4 export + presentation mode ·
->   P5 polish · P6 perf/a11y/responsive · P7 docs/QA/demo.
+> - Remaining build priorities (R9 §35): ~~P1 evaluation + comparison UI~~ ✅ · ~~P2 scenario
+>   system (8 presets + custom builder)~~ ✅ · P3 replay (✅ engine + Replay Lab) + inspectors
+>   (⬜) · P4 export + presentation mode · P5 polish · P6 perf/a11y/responsive · P7 docs/QA/demo.
 > - Current honest state: [`docs/STATUS.md`](docs/STATUS.md) (see its "R9 scope revision" section).
 
 ## 1–2. Project & core idea

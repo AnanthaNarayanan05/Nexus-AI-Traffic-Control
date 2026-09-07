@@ -360,6 +360,69 @@ export interface ScenarioConfig {
   seed: number;
 }
 
+/* ------------------------------------------------------------------ replay */
+
+/** Compact per-decision state carried in each replay frame (backend `_state_summary`). */
+export interface ReplayStateSummary {
+  sim_time: number;
+  phase: string;
+  served_phase: string;
+  phase_elapsed_s: number;
+  total_vehicles: number;
+  total_queue: number;
+  queues: Record<string, number>;
+  emergency_active: boolean;
+  emergency_approach: string | null;
+  throughput_vph: number;
+  violations_total: number;
+}
+
+/** One decision cycle in a replay — mirrors the backend `DecisionRecord`. */
+export interface ReplayFrame {
+  id: string;
+  t: number;
+  step: number;
+  state_summary: ReplayStateSummary;
+  recommendations: Record<string, AgentRecommendation>;
+  coordination: CoordinationDecision;
+  safety: SafetyResult;
+  rewards: Record<string, number>;
+  reward_breakdowns: Record<string, RewardBreakdown>;
+  metrics: MetricSnapshot;
+  applied_phase: Phase;
+}
+
+export interface ReplaySummary {
+  id: string;
+  label: string;
+  created_at: string;
+  scenario_id: string;
+  scenario_name: string;
+  seed: number;
+  mode: ControlMode;
+  model_modes: Record<string, string>;
+  config_digest: string;
+  sim_duration_s: number;
+  decision_count: number;
+  episode_complete: boolean;
+}
+
+export interface ReplayDetail extends ReplaySummary {
+  timeline: ReplayFrame[];
+  events: EventMessage[];
+  episode_metrics: Record<string, number> | null;
+}
+
+export interface ReplaySeek {
+  replay_id: string;
+  index: number;
+  total: number;
+  t: number;
+  prev_t: number | null;
+  next_t: number | null;
+  frame: ReplayFrame;
+}
+
 /* ------------------------------------------------------------------ training */
 
 export type TrainingPhase = 'idle' | 'running' | 'completed' | 'failed';

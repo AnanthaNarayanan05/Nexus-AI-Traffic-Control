@@ -19,7 +19,9 @@ decision loop ── every 6 s sim ──▶  SimulationManager.decide()
    6. adapter.apply_phase(result.command)
    7. reward_a2c = A2CReward(prev_state, action, state) ; ... (for learning + display)
    8. record = DecisionRecord(t, state_summary, rec_a2c, rec_dqn, rec_ppo, decision, result,
-                              rewards, metrics)  →  replay buffer + event timeline + history
+                              rewards, metrics)  →  rollout buffer + event timeline + decisions deque
+                              + the run's replay timeline (persisted as a `replays` row on
+                                episode-complete / reset / capture / shutdown — see replay.md)
    9. if training_enabled: agent.observe(transition) ; agent.maybe_learn()
 
 stream loop  ── 20 Hz real ──▶  WS hub broadcasts latest:
@@ -74,9 +76,12 @@ GET  /api/v1/experiments                  list
 POST /api/v1/training                     start/stop a training run
 GET  /api/v1/models                       registry
 POST /api/v1/models/load                  { agent, version }
-GET  /api/v1/replay/{run_id}
-GET  /api/v1/replay/{run_id}/at?t=        agent + coordination + safety + metrics at time t
-POST /api/v1/export                       { experiment_id, format: csv|json }
+GET  /api/v1/replay                       captured runs of the live loop (summary, newest first)
+POST /api/v1/replay/capture               freeze the current live run into a replay now (409 if < 3 decisions)
+GET  /api/v1/replay/{id}                  full decision timeline + events + episode metrics
+GET  /api/v1/replay/{id}/at?t=            the decision frame (agents + coordination + safety + metrics) at-or-before t
+DELETE /api/v1/replay/{id}                drop one replay (storage management, §90)
+POST /api/v1/export                       { experiment_id, format: csv|json }   (P4 - not built, 404)
 ```
 
 ## 4. Determinism contract

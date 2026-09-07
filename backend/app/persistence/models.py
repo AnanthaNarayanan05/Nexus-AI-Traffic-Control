@@ -1,5 +1,6 @@
-"""ORM tables: the model registry (`models`), experiments (`experiments`) and
-user-saved scenarios (`scenarios`), docs/experiments.md §5."""
+"""ORM tables: the model registry (`models`), experiments (`experiments`),
+user-saved scenarios (`scenarios`) and captured replays (`replays`),
+docs/experiments.md §5 / docs/replay.md."""
 
 from __future__ import annotations
 
@@ -20,6 +21,9 @@ MODEL_STATUSES = ("trained", "evaluated", "active", "archived")
 
 # status lifecycle for an experiment run
 EXPERIMENT_STATUSES = ("running", "completed", "failed")
+
+# control mode a replay was recorded under
+REPLAY_MODES = ("AI", "FIXED_TIME", "MANUAL")
 
 
 class ScenarioRecord(Base):
@@ -47,6 +51,63 @@ class ScenarioRecord(Base):
             "created_at": self.created_at,
             "updated_at": self.updated_at,
         }
+
+
+class ReplayRecord(Base):
+    """One captured run of the live decision loop (spec §54-56, §18-19; docs/replay.md).
+
+    A replay is the ordered list of `DecisionRecord`s the `SimulationManager` produced for
+    one run, plus the events that fired and the final episode metrics. It is written when
+    an episode completes, when the run is torn down (reset / new scenario) with enough
+    decisions to be worth keeping, or on an explicit capture. Every frame is a real
+    measurement from that run - nothing here is synthesised (spec §84).
+
+    The timeline is at the *decision* cadence (~6 s of sim), not the physics cadence:
+    vehicle-level positions are not stored, so a replay plays back the pipeline state
+    (recommendations -> coordination -> safety -> reward -> metrics), not the traffic.
+    """
+
+    __tablename__ = "replays"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)  # "replay-<UTC stamp>"
+    label: Mapped[str] = mapped_column(String(160), default="")
+    created_at: Mapped[str] = mapped_column(String(40), default=_utcnow_iso, index=True)
+
+    scenario_id: Mapped[str] = mapped_column(String(64))
+    scenario_name: Mapped[str] = mapped_column(String(120), default="")
+    seed: Mapped[int] = mapped_column(Integer, default=0)
+    mode: Mapped[str] = mapped_column(String(16), default="AI")   # AI | FIXED_TIME | MANUAL
+    model_modes: Mapped[dict] = mapped_column(JSON, default=dict)  # {a2c: untrained|trained, ...}
+    config_digest: Mapped[str] = mapped_column(String(40), default="")
+
+    sim_duration_s: Mapped[float] = mapped_column(default=0.0)   # sim seconds the run reached
+    decision_count: Mapped[int] = mapped_column(Integer, default=0)
+    episode_complete: Mapped[bool] = mapped_column(default=False)
+
+    timeline: Mapped[list] = mapped_column(JSON, default=list)     # [DecisionRecord json]
+    events: Mapped[list] = mapped_column(JSON, default=list)       # [EventMessage json]
+    episode_metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+    def as_dict(self, *, full: bool = True) -> dict:
+        out = {
+            "id": self.id,
+            "label": self.label,
+            "created_at": self.created_at,
+            "scenario_id": self.scenario_id,
+            "scenario_name": self.scenario_name,
+            "seed": self.seed,
+            "mode": self.mode,
+            "model_modes": self.model_modes or {},
+            "config_digest": self.config_digest,
+            "sim_duration_s": round(self.sim_duration_s or 0.0, 2),
+            "decision_count": self.decision_count,
+            "episode_complete": bool(self.episode_complete),
+        }
+        if full:
+            out["timeline"] = self.timeline or []
+            out["events"] = self.events or []
+            out["episode_metrics"] = self.episode_metrics
+        return out
 
 
 class ModelRecord(Base):

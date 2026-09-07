@@ -33,6 +33,24 @@ recorded here. `[PPT]` = fixed by the source; everything below is an engineering
   (balanced-heavy and asymmetric-very-heavy respectively). Weights and arrival rates are
   engineering choices, consistent with the existing profiles.
 
+## Replay (R9 §18–19, §54–56, §90)
+- **A26. A replay is the decision-cadence timeline, not the physics cadence.** A frame is
+  a stored `DecisionRecord` (one per AI decision, ~6 s of sim) — recommendations,
+  coordination, safety, reward decomposition, metric snapshot. Per-vehicle positions are
+  **not** captured, so there is no car-level scrubbing; the Replay Lab says so. Capturing
+  physics-tick state (20–40× more frames) was judged not worth the storage for what the
+  replay is for — auditing the AI → coordinator → safety decision chain. Vehicle-level
+  inspection stays a live-only feature (the §19 inspectors cover paused live state).
+- **A27. Replays are captured from live `SimulationManager` runs only**, on
+  episode-complete / run teardown (reset, load scenario) / explicit `POST /replay/capture`
+  / shutdown, and only when the run reached **≥ 3 decisions**. Headless experiment runs are
+  *not* replayable — the experiment runner records episode aggregates, not per-decision
+  data. Synchronized experiment replay (§18) is therefore deferred.
+- **A28. Replay storage is capped at the newest 40** (`_REPLAY_KEEP`), pruned on every
+  capture (`ReplayStore.prune`, §90). The in-memory per-run timeline is additionally
+  hard-capped at 5000 decision frames / 8000 events so a runaway session can't grow
+  without bound. `data/nexus.db` remains a runtime artifact (`.gitignore`).
+
 ## Signal timing
 - **A6.** `min_green = 8 s`, `max_green = 60 s`, `yellow = 3 s`, `all_red = 2 s`,
   `emergency_max_priority = 45 s`. Typical urban values; all in `config.yaml`, all enforced by the safety

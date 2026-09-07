@@ -7,6 +7,9 @@ import type {
   ExperimentSnapshot,
   MetricSnapshot,
   ModelRecord,
+  ReplayDetail,
+  ReplaySeek,
+  ReplaySummary,
   ScenarioConfig,
   ScenarioSummary,
   SimStatus,
@@ -117,6 +120,15 @@ export const api = {
     return request<{ models: ModelRecord[] }>(`/models${qs ? `?${qs}` : ''}`);
   },
   model: (modelId: string) => request<ModelRecord>(`/models/${modelId}`),
+
+  // ---- replay: captured runs of the live decision loop (R9 P3) ----
+  replays: (limit = 50) => request<{ replays: ReplaySummary[] }>(`/replay?limit=${limit}`),
+  replay: (id: string) => request<ReplayDetail>(`/replay/${id}`),
+  replayAt: (id: string, t: number) =>
+    request<ReplaySeek>(`/replay/${id}/at?t=${encodeURIComponent(t)}`),
+  captureReplay: () => post<ReplaySummary>('/replay/capture'),
+  deleteReplay: (id: string) =>
+    request<{ deleted: string }>(`/replay/${id}`, { method: 'DELETE' }),
 
   // ---- experiments: Fixed-Time vs AI comparison (R9 P1) ----
   experiments: (history = 20) =>

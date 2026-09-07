@@ -29,6 +29,13 @@ def _isolated_db(tmp_path_factory, monkeypatch):
     reset_engine_for_tests()
     _reset_custom_for_tests()
     yield
+    # A module-scoped TestClient's lifespan shuts down *after* this fixture has restored
+    # the real db_url; drop any in-memory replay timeline so that shutdown has nothing to
+    # flush to the real data/nexus.db.
+    import app.core.simulation_manager as _sm
+    if _sm._MANAGER is not None:
+        _sm._MANAGER._timeline.clear()
+        _sm._MANAGER._timeline_events.clear()
     reset_engine_for_tests()
     _reset_custom_for_tests()
     _cfg.get_settings.cache_clear()

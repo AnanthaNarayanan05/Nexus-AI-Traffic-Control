@@ -1,8 +1,8 @@
 """REST + WebSocket surface (spec section 88, docs/system-flow.md section 3).
 
 Drives the real FastAPI app through Starlette's TestClient (lifespan on, so the
-simulation loop thread is live). Endpoints still deferred to a later slice (experiments,
-replay) are asserted to 404 rather than stubbed (spec §98).
+simulation loop thread is live). Experiments (R9 P1) and replay (R9 P3) are now live;
+`export` remains deferred and is asserted absent rather than stubbed (spec §98).
 """
 
 from __future__ import annotations
@@ -314,10 +314,57 @@ def test_metrics_and_events(client):
     assert any(ev["category"] == "SYSTEM" for ev in e["events"])
 
 
-def test_deferred_endpoints_are_absent_not_stubbed(client):
-    # spec section 98: still-unimplemented features must not be faked.
-    # /experiments is live as of R9 P1; /replay is still deferred (P3).
-    assert client.get("/api/v1/replay").status_code == 404
+def test_export_endpoint_still_absent_not_stubbed(client):
+    # spec §98: export (R9 P4) is not built yet, so it must 404, not return a placeholder.
+    assert client.post("/api/v1/export", json={}).status_code == 404
+
+
+def test_replay_capture_list_seek_and_delete(client):
+    # R9 P3: the replay surface. A run has to actually make decisions before there is
+    # anything to capture - nothing is fabricated (spec §84, §98).
+    client.post("/api/v1/simulation/reset", json={"scenario_id": "normal", "seed": 5})
+    assert client.post("/api/v1/replay/capture").status_code == 409  # 0 decisions yet
+
+    client.post("/api/v1/simulation/step", json={"ticks": 90})       # 45 s sim -> ~7 decisions
+    cap = client.post("/api/v1/replay/capture")
+    assert cap.status_code == 201
+    rid = cap.json()["id"]
+    assert cap.json()["decision_count"] >= 3
+    assert cap.json()["episode_complete"] is False                   # run did not finish
+    assert cap.json()["seed"] == 5
+
+    rows = client.get("/api/v1/replay").json()["replays"]
+    assert any(r["id"] == rid for r in rows)
+    assert "timeline" not in rows[0]                                 # list is summary-only
+
+    detail = client.get(f"/api/v1/replay/{rid}").json()
+    frames = detail["timeline"]
+    assert len(frames) == detail["decision_count"] >= 3
+    f0 = frames[0]
+    assert {"t", "coordination", "safety", "rewards", "metrics", "applied_phase"} <= set(f0)
+
+    at = client.get(f"/api/v1/replay/{rid}/at", params={"t": frames[2]["t"] + 0.1}).json()
+    assert at["index"] == 2
+    assert at["frame"]["t"] == frames[2]["t"]
+    assert at["total"] == len(frames)
+
+    assert client.delete(f"/api/v1/replay/{rid}").json() == {"deleted": rid}
+    assert client.get(f"/api/v1/replay/{rid}").status_code == 404
+    assert client.delete(f"/api/v1/replay/{rid}").status_code == 404
+    assert client.get("/api/v1/replay/unknown-id/at", params={"t": 1}).status_code == 404
+
+
+def test_replay_captured_on_reset_of_a_run_with_decisions(client):
+    client.post("/api/v1/simulation/reset", json={"scenario_id": "normal", "seed": 11})
+    client.post("/api/v1/simulation/step", json={"ticks": 60})       # 30 s -> ~5 decisions
+    before = len(client.get("/api/v1/replay").json()["replays"])
+    # resetting tears the run down; a run with enough decisions is persisted as 'partial'
+    client.post("/api/v1/simulation/reset", json={"scenario_id": "normal", "seed": 12})
+    rows = client.get("/api/v1/replay").json()["replays"]
+    assert len(rows) == before + 1
+    assert rows[0]["episode_complete"] is False
+    assert rows[0]["seed"] == 11
+    client.delete(f"/api/v1/replay/{rows[0]['id']}")                  # keep the store tidy
 
 
 def test_experiments_status_endpoint(client):

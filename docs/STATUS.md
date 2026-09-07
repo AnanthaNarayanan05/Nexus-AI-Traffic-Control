@@ -19,13 +19,22 @@ algorithm roster:
   touch A2C + DQN. New PPO training runs are rejected; `GET /api/v1/agents/ppo` → 404;
   `POST /simulation/model {agent:"ppo"}` → rejected; `PPOStrip.tsx` is unmounted.
 - R9 priority order for remaining work: ~~**P1** evaluation correctness + comparison UI~~ ✅ →
-  ~~**P2** preset/custom scenario system~~ ✅ → **P3** replay + inspectors → **P4** export +
-  presentation mode → **P5** UI polish → **P6** performance / a11y / responsive →
+  ~~**P2** preset/custom scenario system~~ ✅ → **P3** replay (✅ engine) + inspectors (⬜) →
+  **P4** export + presentation mode → **P5** UI polish → **P6** performance / a11y / responsive →
   **P7** docs / QA / reproducibility / demo readiness.
 - **P1 done (2026-09-08):** `ExperimentService` + `GET/POST /api/v1/experiments` +
   `experiments` persistence table + Experiment Lab (`#/experiments`) with the honest
   Fixed-Time vs AI comparison table. See the Slice 2 table below and
   [`experiments.md`](experiments.md).
+- **P3 replay engine done (2026-09-08):** `SimulationManager` captures the live decision
+  timeline on episode-complete / reset / explicit capture / shutdown; `replays` persistence
+  table + `ReplayStore` (self-pruning to the newest 40, §90); `GET /api/v1/replay`,
+  `POST /api/v1/replay/capture`, `GET /api/v1/replay/{id}[/at?t=]`, `DELETE /api/v1/replay/{id}`;
+  Replay Lab (`#/replay`) — a client-side player (play/pause/step/scrub/speed) over the
+  captured decision frames, showing the agent → coordinator → authoritative-safety pipeline,
+  reward decomposition, metrics and events at every decision. Decision-cadence, not
+  physics-cadence: no vehicle-level playback, stated in the UI. The §19 inspectors are the
+  remaining P3 item. See the Slice 2 table below and [`replay.md`](replay.md).
 - **P2 done (2026-09-08):** all 8 §8A preset scenarios with objective / AI-focus /
   difficulty metadata; `ScenarioConfig` bounds validation (out-of-range → 422, unknown
   field rejected, safety layer has no scenario switch); `scenarios` persistence table +
@@ -38,8 +47,8 @@ algorithm roster:
 
 Verified end-to-end 2026-09-07: built-in sim → FastAPI → WebSocket → PixiJS render →
 agent decision loop → coordination → safety → applied phase → measured metrics,
-all in the browser. `pytest tests/` (217, incl. Slice 2 + R9 deprecation + P1 experiments +
-P2 scenarios) + `vitest` (51) green; `npm run build` + `eslint` + `tsc -b` clean.
+all in the browser. `pytest tests/` (225, incl. Slice 2 + R9 deprecation + P1 experiments +
+P2 scenarios + P3 replay) + `vitest` (56) green; `npm run build` + `eslint` + `tsc -b` clean.
 
 | Area | State | Notes |
 |---|---|---|
@@ -65,7 +74,7 @@ P2 scenarios) + `vitest` (51) green; `npm run build` + `eslint` + `tsc -b` clean
 | Coordination bar | ✅ | A2C + DQN recs → winner + basis → safety verdict + ladder trace + score breakdown (engine still accepts N recs; PPO no longer feeds it) |
 | Metrics row + event timeline | ✅ | filterable TRAFFIC/AI/EMERGENCY/SAFETY/VIOLATION/SYSTEM; server errors surfaced verbatim |
 | Agent inspector REST polling | ✅ | `GET /agents/{name}` on a 2 s poll; not streamed (cost) |
-| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation, experiments, scenarios) | ✅ | `pytest tests/` → **217 pass** (incl. R9: PPO rejected from live inference + agent inspector; P1: experiment store + service + API; P2: preset-metadata completeness + `ScenarioStore` CRUD + validation + persistence round-trip + scenario API); `vitest` → **51 pass** (incl. `ACTIVE_AGENTS` scope lock, `ComparisonTable` honesty rules, `ExperimentLab`, `ScenarioLab`). PPO unit tests (agent contract, reward, state builder) retained and green — legacy code stays covered. |
+| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation, experiments, scenarios, replay) | ✅ | `pytest tests/` → **225 pass** (incl. R9: PPO rejected from live inference + agent inspector; P1: experiment store + service + API; P2: preset-metadata completeness + `ScenarioStore` CRUD + validation + persistence round-trip + scenario API; P3: `ReplayStore` CRUD + prune + replay capture/list/seek/delete through the API); `vitest` → **56 pass** (incl. `ACTIVE_AGENTS` scope lock, `ComparisonTable` honesty rules, `ExperimentLab`, `ScenarioLab`, `ReplayLab`). PPO unit tests (agent contract, reward, state builder) retained and green — legacy code stays covered. |
 
 ## Slice 2 — training loops  *(in progress)*
 
@@ -87,7 +96,7 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 | PPO evaluated (8 held-out seeds) | ⚠️ | legacy result kept for the record (vs fixed-time: avg waiting +30.7%, speed +65.7%, throughput −12.6%, 47 safety overrides/ep). PPO is out of the R9 comparison workflow. Full table in [`training.md`](training.md). |
 | SQLite model registry + versioning | ✅ | `app/persistence` (SQLAlchemy 2 + SQLite at `data/nexus.db`). `models` table: agent, version, checkpoint path, run id, scenario, seed, episodes, training + reward config, config digest, git sha, torch version, timestamps, eval metrics, status (`trained`→`evaluated`→`active`, one `active`/agent). `TrainingManager` auto-registers its final checkpoint; `evaluate --register` attaches the comparison blob; `scripts.training.backfill_registry` imports pre-registry runs. 12 tests. Doc: [`persistence.md`](persistence.md). |
 | `TrainingService` (background job + live progress) | ✅ | one run at a time on its own thread; publishes an immutable snapshot polled by REST/WS; `history()` from on-disk run records. 6 tests. |
-| Training REST API | ✅ | `GET /api/v1/training` (status + job + history), `POST /api/v1/training/runs` (start, 409 if busy), `GET /api/v1/training/runs[/{id}]`, `GET /api/v1/models[/{id}]`. `replay` still 404 (§98). |
+| Training REST API | ✅ | `GET /api/v1/training` (status + job + history), `POST /api/v1/training/runs` (start, 409 if busy), `GET /api/v1/training/runs[/{id}]`, `GET /api/v1/models[/{id}]`. |
 | Training WebSocket progress | ✅ | `training_update` frame (`{seq, running, job:{phase, episode, progress, returns, last_episode:{return, losses, metrics}, ...}}`) pushed on every published change; real episode measurements only (§84). |
 | Training Lab UI (`#/training`) | ✅ | hash route (no react-router). Legend spells out **TRAINING vs EVALUATION vs LIVE INFERENCE**. Start-a-run form (agent/episodes/scenario/seed/checkpoint-every → `POST /training/runs`), live-run panel (progress bar, episode-return sparkline, last-episode losses/metrics — fed by the `training_update` WS frame, REST-polled fallback), finished-runs + model-registry tables with status badges. All values are real backend measurements (§84). 4 vitest specs. |
 | `ExperimentService` (background comparison job + live progress) | ✅ | **R9 P1.** Mirrors `TrainingService`: one experiment at a time on its own thread, publishes an immutable snapshot polled by REST/WS. Controllers `fixed_time \| a2c \| dqn`; per-agent model selector `untrained \| active \| latest \| <registry id>` resolved to a checkpoint **up front** (fail-fast, never a fake path). Reproducibility blob frozen at start (config digest, git sha, seeds, reward weights, decision/step cadence, torch version). 6 tests. |
@@ -98,6 +107,9 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 | `ScenarioConfig` validation (§8B) | ✅ | Pydantic bounds: weights non-negative + non-zero total, `arrivals_vph` ∈ (0, 12000], `duration_s` ∈ [60, 14400], event rates ≥ 0 and capped, `blocked_lanes` valid approach + lane 0–2 + never every lane of an approach, scheduled changes before episode end, id is a slug, weather / time-of-day enumerated. `extra="forbid"` — an unknown field is a 422, so no request can smuggle a knob (there is **no** scenario-level switch for the authoritative safety layer, §113). Out-of-range → 422, never a silent clamp. |
 | Custom scenario persistence + CRUD | ✅ | New `scenarios` SQLite table + `ScenarioStore` facade (`save` upsert / `get` / `list` / `delete`). `app.scenarios.presets` loads custom rows lazily (`_load_custom`, keeps per-test SQLite isolation), `register_scenario(persist=True)`, `delete_scenario` (rejects preset ids). REST: `POST /api/v1/scenarios` (422 bad input, 409 preset-id collision), `POST /api/v1/scenarios/{id}/duplicate`, `DELETE /api/v1/scenarios/{id}` (409 preset, 404 unknown). `GET /scenarios` list carries the metadata; `scenario_detail` returns the full blob. +26 pytest (preset-metadata completeness, `ScenarioStore` CRUD, validation rejects bad input, persistence round-trip, custom scenario actually runs an episode, scenario API). |
 | Scenario Lab UI (`#/scenarios`) | ✅ | **R9 P2** — hash route (no react-router). Left: preset + custom scenario list with difficulty badge + objective + AI-focus. Right: read-only view for presets (**Duplicate to edit**), full editable form for custom (name / id-slug, description, objective, AI-focus, difficulty, demand weights + arrivals + turn split, emergency / violation / accident rates, closed-lane add/remove, mid-episode demand changes, weather / time-of-day, duration, seed). Plain-English **preview** paragraph regenerated live from the draft. SAVE / DUPLICATE / DELETE / **Load into simulation**. Server 422/409 messages surfaced verbatim. `cache: 'no-store'` added to the API client so a backend restart can't serve a stale list. 5 vitest specs. |
+| Replay capture + `replays` persistence | ✅ | **R9 P3.** `SimulationManager` keeps the current run's decision timeline (`_timeline` / `_timeline_events`, hard-capped 5000 / 8000) and persists a `ReplayRecord` on episode-complete, run teardown (reset / load scenario), explicit capture, and shutdown — only when the run has ≥ 3 decisions (else no-op / 409). Fresh `_run_id` / `_run_seed` minted per run so the stored `id` / `label` / `seed` describe the run actually played. New `replays` SQLite table (label, scenario, seed, mode, model modes, config digest, duration, decision count, episode-complete flag, `timeline` = list[`DecisionRecord`], `events`, `episode_metrics` only when complete). `ReplayStore` facade — `save` upsert / `get` full / `list` summary-only / `delete` / `prune(keep=40)` (§90 storage cap, run on every capture) / `count`. +6 pytest (`persistence/test_replay_store.py`). Doc: [`replay.md`](replay.md). |
+| Replay REST | ✅ | **R9 P3.** `GET /api/v1/replay?limit=` (summary, newest first, no timeline), `POST /api/v1/replay/capture` (201 + summary; 409 when the run has < 3 decisions), `GET /api/v1/replay/{id}` (full timeline + events + episode metrics; 404), `GET /api/v1/replay/{id}/at?t=` (the decision frame at-or-before `t` + prev/next markers; 404 unknown / empty), `DELETE /api/v1/replay/{id}` (404 unknown). Capture / delete route through the loop thread; reads hit `ReplayStore` directly. No `replay_update` WS frame — a replay is immutable and playback is client-side. +3 pytest (`integration/test_api.py`). |
+| Replay Lab UI (`#/replay`) | ✅ | **R9 P3** — hash route (no react-router). Captured-replays list (scenario, FULL EPISODE / PARTIAL badge, `seed · mode · N decisions · duration`, per-row Delete, Refresh, **Capture current run** with the friendly 409 message); newest auto-opens. Client-side transport — ⏮ ◀ ▶/⏸ ▶ ⏭, speed 0.5–4×, range scrubber, `decision N / total · t` readout, play auto-stops at the end. Seven per-frame panels straight from the stored `DecisionRecord`: coordinator → **authoritative-safety** pipeline row, agent recommendations, coordination ladder + score breakdown, reward decomposition, metric snapshot, traffic state, events-up-to-here. Legend + pipeline state that where the coordinated choice and the applied phase differ, safety won (§113). "Vehicle-level playback is not captured" stated in the player (decision cadence, not physics cadence). 5 vitest specs (`ReplayLab.test.tsx`). |
 
 ## R9 remaining work (priority order)
 
@@ -105,7 +117,7 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 |---|---|---|
 | P1 | Evaluation correctness + comparison UI | ✅ **done 2026-09-08** — `ExperimentService` + `experiments` REST/WS/persistence + Experiment Lab with the honest `ComparisonTable` (see Slice 2 table). Multi-seed mean ± 95% CI, reproducibility blob, direction-aware improvement %, never % without baseline values. |
 | P2 | Preset + custom scenario system | ✅ **done 2026-09-08** — 8 §8A presets with objective / AI-focus / difficulty; `ScenarioConfig` bounds validation (422 not clamp; `extra="forbid"` blocks smuggled knobs; no safety switch); `scenarios` table + `ScenarioStore`; `POST` / `DELETE` / `duplicate` REST; Scenario Lab (`#/scenarios`) preset browser + custom builder with plain-English preview + SAVE / DUPLICATE / DELETE / LOAD. See Slice 2 table + [`scenarios.md`](scenarios.md). |
-| P3 | Replay + inspectors | lightweight replay (§18: play/pause/seek/step/speed/events), `GET /api/v1/replay`; Vehicle / Emergency / Signal / AI-Coordination inspectors (§19) |
+| P3 | Replay + inspectors | 🟡 **replay engine done 2026-09-08** — capture on the running `SimulationManager` + `replays` table + `GET/POST/DELETE /api/v1/replay[...]` + Replay Lab (`#/replay`) with client-side play/pause/seek/step/speed over the captured decision frames (§18, §54–56, §90). See Slice 2 table + [`replay.md`](replay.md). ⬜ **remaining:** Vehicle / Emergency / Signal / AI-Coordination inspectors + DQN experience-replay inspector (§19). |
 | P4 | Export + presentation mode | CSV + JSON export (§23, HTML desirable); presentation/demo mode (§24) — reduced controls, clean narrative |
 | P5 | Premium UI polish | |
 | P6 | Performance (60 FPS) · accessibility · responsive | |

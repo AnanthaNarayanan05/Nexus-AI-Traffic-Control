@@ -23,6 +23,7 @@ import threading
 import time
 import uuid
 from collections import deque
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -52,6 +53,16 @@ log = get_logger("SYSTEM")
 
 _EVENT_CATEGORIES = {c.value: c for c in EventCategory}
 _SEVERITIES = {s.value: s for s in Severity}
+
+# replay capture thresholds
+_MIN_REPLAY_DECISIONS = 3      # a run shorter than this is not worth persisting
+_MAX_REPLAY_FRAMES = 5000      # ~8 h of sim at the decision cadence - a hard safety cap
+_MAX_REPLAY_EVENTS = 8000
+_REPLAY_KEEP = 40             # storage cap: prune to the newest N on each new capture
+
+
+def _utcnow_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 class _Pending:
@@ -111,6 +122,14 @@ class SimulationManager:
         self._event_ids: dict[str, int] = {}
         self._decisions: deque[DecisionRecord] = deque(maxlen=400)
 
+        # replay capture: the full (uncapped-per-run) decision + event timeline of the
+        # current run, persisted to the `replays` table on episode end / teardown / capture.
+        self._run_id: str = ""
+        self._run_started_iso: str = ""
+        self._run_seed: int = self.default_seed
+        self._timeline: list[DecisionRecord] = []
+        self._timeline_events: list[EventMessage] = []
+
         self._pending: _Pending | None = None
         self._last_decision_t = -1e9
         self._sim_budget = 0.0
@@ -137,6 +156,10 @@ class SimulationManager:
         self._stop.set()
         if self._thread:
             self._thread.join(timeout=3.0)
+        try:
+            self._persist_replay(complete=self._episode_done, reason="shutdown")
+        except Exception:  # noqa: BLE001 - shutdown must never raise
+            log.error("replay capture on shutdown failed", exc_info=True)
         log.info("simulation loop thread stopped")
 
     # ================================================================= commands
@@ -460,6 +483,8 @@ class SimulationManager:
         )
         self._decision = record
         self._decisions.append(record)
+        if len(self._timeline) < _MAX_REPLAY_FRAMES:
+            self._timeline.append(record)
 
         self._emit(EventCategory.AI, Severity.INFO,
                    f"{decision.winner.upper()} -> {decision.candidate_phase.value} "
@@ -560,9 +585,14 @@ class SimulationManager:
         log.info("episode complete", sim_time=state.sim_time,
                  returns={n.value: round(v, 2) for n, v in self._episode_returns.items()},
                  metrics=episode.flat())
+        self._persist_replay(complete=True, reason="episode_complete")
 
     # ================================================================= internals
     def _reset_locked(self, scenario: ScenarioConfig, seed: int) -> None:
+        # persist whatever the outgoing run captured before we wipe it (no-op on the
+        # first call from __init__, and for runs with too few decisions to be useful)
+        self._persist_replay(complete=self._episode_done, reason="teardown")
+
         self.scenario = scenario
         self.adapter.reset(scenario, seed)
         self.adapter.set_mode(self.mode.value)
@@ -579,7 +609,81 @@ class SimulationManager:
         self._decisions.clear()
         self._events.clear()
         self._event_ids.clear()
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        self._run_id = f"replay-{stamp}-{uuid.uuid4().hex[:6]}"
+        self._run_started_iso = _utcnow_iso()
+        self._run_seed = int(seed)
+        self._timeline = []
+        self._timeline_events = []
         self._publish()
+
+    # ---------------------------------------------------------------- replay capture
+    def _build_replay_record(self, *, complete: bool) -> dict | None:
+        """Freeze the current run's timeline into a `replays` row dict, or None if the
+        run is too short to be worth keeping."""
+        if len(self._timeline) < _MIN_REPLAY_DECISIONS:
+            return None
+        last_t = self._timeline[-1].t
+        complete_flag = bool(complete or self._episode_done)
+        tag = "episode" if complete_flag else "partial"
+        return {
+            "id": self._run_id or f"replay-{uuid.uuid4().hex[:12]}",
+            "label": f"{self.scenario.name} · seed {self._run_seed} · "
+                     f"{self.mode.value} · {tag}",
+            "created_at": _utcnow_iso(),
+            "scenario_id": self.scenario.id,
+            "scenario_name": self.scenario.name,
+            "seed": int(self._run_seed),
+            "mode": self.mode.value,
+            "model_modes": {n.value: self._model_mode[n] for n in self.agents},
+            "config_digest": get_config().digest,
+            "sim_duration_s": float(last_t),
+            "decision_count": len(self._timeline),
+            "episode_complete": complete_flag,
+            "timeline": [d.model_dump(mode="json") for d in self._timeline],
+            "events": [e.model_dump(mode="json") for e in self._timeline_events],
+            "episode_metrics": self._metrics.flat() if complete_flag else None,
+        }
+
+    def _persist_replay(self, *, complete: bool, reason: str = "") -> dict | None:
+        record = self._build_replay_record(complete=complete)
+        if record is None:
+            return None
+        try:
+            from app.persistence.replays import ReplayStore
+
+            store = ReplayStore()
+            saved = store.save(record)
+            store.prune(keep=_REPLAY_KEEP)
+        except Exception as exc:  # noqa: BLE001 - persistence is optional; never kill the loop
+            log.error("replay not persisted", run=self._run_id, reason=reason, error=str(exc))
+            return None
+        log.info("replay captured", run=self._run_id, reason=reason,
+                 decisions=saved["decision_count"], complete=saved["episode_complete"])
+        return saved
+
+    def capture_replay(self) -> dict | None:
+        """Force-persist the current run even if it has not finished (user 'save run')."""
+        return self.submit(lambda: self._persist_replay(complete=self._episode_done,
+                                                        reason="manual"))
+
+    def list_replays(self, limit: int = 50) -> list[dict]:
+        from app.persistence.replays import ReplayStore
+
+        return ReplayStore().list(limit=limit)
+
+    def get_replay(self, replay_id: str) -> dict | None:
+        from app.persistence.replays import ReplayStore
+
+        return ReplayStore().get(replay_id)
+
+    def delete_replay(self, replay_id: str) -> None:
+        from app.persistence.replays import ReplayStore, ReplayStoreError
+
+        try:
+            ReplayStore().delete(replay_id)
+        except ReplayStoreError as exc:
+            raise KeyError(str(exc)) from exc
 
     def _publish(self) -> None:
         state = self.adapter.get_state()
@@ -606,6 +710,8 @@ class SimulationManager:
             )
             self._events.append(ev)
             self._event_ids[ev.id] = self._event_seq
+            if len(self._timeline_events) < _MAX_REPLAY_EVENTS:
+                self._timeline_events.append(ev)
             if len(self._event_ids) > 2000:
                 live = {e.id for e in self._events}
                 self._event_ids = {k: v for k, v in self._event_ids.items() if k in live}
