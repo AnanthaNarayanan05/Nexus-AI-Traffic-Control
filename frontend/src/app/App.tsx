@@ -7,7 +7,6 @@ import { DQNPanel } from '../components/DQNPanel';
 import { EventTimeline } from '../components/EventTimeline';
 import { MetricsRow } from '../components/MetricsRow';
 import { ModelModeBar } from '../components/ModelModeBar';
-import { PPOStrip } from '../components/PPOStrip';
 import { SimulationStage } from '../components/SimulationStage';
 import { api } from '../lib/api';
 import { useHashRoute } from '../lib/hashRoute';
@@ -20,7 +19,6 @@ function Dashboard() {
       <div className="column">
         <ModelModeBar />
         <A2CPanel />
-        <PPOStrip />
       </div>
 
       <div className="centre-column">

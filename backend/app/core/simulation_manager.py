@@ -1,8 +1,11 @@
 """SimulationManager - the live decision loop (docs/architecture.md section 2).
 
-Owns exactly one running simulation and wires the pipeline the PPT specifies:
+Owns exactly one running simulation and wires the pipeline:
 
-    A2C / DQN / PPO  ->  COORDINATION  ->  SAFETY  ->  SIGNAL  ->  SIMULATION
+    A2C / DQN  ->  COORDINATION  ->  SAFETY  ->  SIGNAL  ->  SIMULATION
+
+(PPO is a legacy agent, out of the R9 active scope - its class is preserved but is
+not built into the live loop; see docs/STATUS.md.)
 
 Two decoupled cadences (spec section 72):
   * physics  - every `simulation.step_length_s` of simulated time
@@ -28,7 +31,6 @@ from app.agents.common.base import BaseAgent
 from app.agents.common.resolve import action_to_command
 from app.agents.common.rewards import make_reward_context
 from app.agents.dqn import DQNAgent
-from app.agents.ppo import PPOAgent
 from app.control import FixedTimeController, manual_command
 from app.coordination import Coordinator
 from app.core.config import get_config, get_settings
@@ -78,15 +80,14 @@ class SimulationManager:
         self.adapter = get_adapter()
         self.a2c = A2CAgent(seed=self.default_seed)
         self.dqn = DQNAgent(seed=self.default_seed)
-        self.ppo = PPOAgent(seed=self.default_seed)
         self.agents: dict[AgentName, BaseAgent] = {
-            AgentName.A2C: self.a2c, AgentName.DQN: self.dqn, AgentName.PPO: self.ppo,
+            AgentName.A2C: self.a2c, AgentName.DQN: self.dqn,
         }
         # Which weights each agent is running: "untrained" (fresh init) or "trained"
         # (a validated checkpoint from the registry). Starts untrained - the live app
         # makes no claim of a learned policy until a checkpoint is loaded here (§84).
-        self._model_mode: dict[AgentName, str] = dict.fromkeys(AgentName, "untrained")
-        self._model_source: dict[AgentName, str | None] = dict.fromkeys(AgentName, None)
+        self._model_mode: dict[AgentName, str] = {n: "untrained" for n in self.agents}
+        self._model_source: dict[AgentName, str | None] = {n: None for n in self.agents}
         self.coordinator = Coordinator()
         self.safety = SafetyValidator()
         self.metrics = MetricsAggregator(self.adapter)
@@ -113,7 +114,7 @@ class SimulationManager:
         self._pending: _Pending | None = None
         self._last_decision_t = -1e9
         self._sim_budget = 0.0
-        self._episode_returns: dict[AgentName, float] = dict.fromkeys(AgentName, 0.0)
+        self._episode_returns: dict[AgentName, float] = {n: 0.0 for n in self.agents}
         self._episode_done = False
 
         self._commands: queue.Queue[tuple[Callable[[], Any], Any]] = queue.Queue()
@@ -201,9 +202,7 @@ class SimulationManager:
             return self.status()
         return self.submit(op)
 
-    _AGENT_CLASSES = {
-        AgentName.A2C: A2CAgent, AgentName.DQN: DQNAgent, AgentName.PPO: PPOAgent,
-    }
+    _AGENT_CLASSES = {AgentName.A2C: A2CAgent, AgentName.DQN: DQNAgent}
 
     def set_model(self, agent: str, mode: str, version: str | None = None) -> dict:
         """Swap an agent between fresh (``untrained``) weights and a registry checkpoint.
@@ -217,6 +216,8 @@ class SimulationManager:
             name = AgentName(agent.lower())
         except ValueError as exc:
             raise ValueError(f"unknown agent {agent!r}") from exc
+        if name not in self._AGENT_CLASSES:
+            raise ValueError(f"agent {name.value!r} is not in the active scope (A2C + DQN only)")
         mode = mode.lower()
         if mode not in ("untrained", "trained"):
             raise ValueError(f"mode must be 'untrained' or 'trained' (got {mode!r})")
@@ -250,10 +251,8 @@ class SimulationManager:
             self.agents[name] = fresh
             if name == AgentName.A2C:
                 self.a2c = fresh
-            elif name == AgentName.DQN:
-                self.dqn = fresh
             else:
-                self.ppo = fresh
+                self.dqn = fresh
             self._model_mode[name] = mode
             self._model_source[name] = source_id
             self._pending = None  # mixing policies mid-decision is not comparable
@@ -316,8 +315,8 @@ class SimulationManager:
             "episode_done": self._episode_done,
             "seq": self._seq,
             "agents": {n.value: a.status().model_dump(mode="json") for n, a in self.agents.items()},
-            "model_modes": {n.value: self._model_mode[n] for n in AgentName},
-            "model_sources": {n.value: self._model_source[n] for n in AgentName},
+            "model_modes": {n.value: self._model_mode[n] for n in self.agents},
+            "model_sources": {n.value: self._model_source[n] for n in self.agents},
             "safety": {"overrides_total": self.safety.overrides_total,
                        "checks_total": self.safety.checks_total},
             "config_digest": get_config().digest,
@@ -478,7 +477,7 @@ class SimulationManager:
             self._pending = None
 
     def _decide_ai(self, state: SimulationState):
-        recs = [self.agents[n].act(state) for n in (AgentName.A2C, AgentName.DQN, AgentName.PPO)]
+        recs = [self.agents[n].act(state) for n in (AgentName.A2C, AgentName.DQN)]
         decision = self.coordinator.resolve(recs, state)
         by_agent = {r.agent: r for r in recs}
 
@@ -572,7 +571,7 @@ class SimulationManager:
         self._pending = None
         self._last_decision_t = -1e9
         self._sim_budget = 0.0
-        self._episode_returns = dict.fromkeys(AgentName, 0.0)
+        self._episode_returns = {n: 0.0 for n in self.agents}
         self._episode_done = False
         self._decision = None
         self._coordination = None

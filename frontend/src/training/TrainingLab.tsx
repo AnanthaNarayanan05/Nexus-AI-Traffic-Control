@@ -6,8 +6,11 @@
  * get confused otherwise, so the header spells them out:
  *   TRAINING        - gradient steps against a scenario, here.
  *   EVALUATION      - scoring a checkpoint vs fixed-time over held-out seeds (CLI, see docs).
- *   LIVE INFERENCE  - the running simulation on the dashboard (still UNTRAINED until
- *                     STEP 8 wires trained checkpoints in).
+ *   LIVE INFERENCE  - the running simulation on the dashboard; flip an agent to TRAINED
+ *                     from the LIVE MODEL bar to load its active registry checkpoint.
+ *
+ * R9 active scope is A2C + DQN only (see lib/format.ts::ACTIVE_AGENTS). PPO is a legacy
+ * agent - it cannot be trained here and the backend rejects PPO training runs.
  *
  * Every number shown is a real measurement streamed from the backend training service
  * (MASTER_PROMPT sections 84, 98, 114). Nothing here is mocked.
@@ -17,6 +20,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { ApiError, api } from '../lib/api';
 import {
+  ACTIVE_AGENTS,
   AGENT_LABEL,
   AGENT_OBJECTIVE,
   AGENT_OWNER,
@@ -36,7 +40,8 @@ import { useTrainingStore } from '../store';
 import { Badge, Empty, KV, Panel, SectionLabel, Stat } from '../components/common/Primitives';
 import { Sparkline } from './Sparkline';
 
-const AGENTS: AgentKey[] = ['a2c', 'dqn', 'ppo'];
+// R9 active scope: only A2C + DQN can be trained. PPO training is blocked backend-side.
+const AGENTS = ACTIVE_AGENTS;
 const AGENT_COLOR: Record<AgentKey, string> = {
   a2c: 'var(--a2c)',
   dqn: 'var(--dqn)',

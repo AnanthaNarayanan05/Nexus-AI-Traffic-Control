@@ -23,7 +23,7 @@ class SpeedRequest(BaseModel):
 
 
 class ModelRequest(BaseModel):
-    agent: str = Field(description="a2c | dqn | ppo")
+    agent: str = Field(description="a2c | dqn")
     mode: str = Field(description="untrained | trained")
     version: str | None = Field(
         default=None,
@@ -52,7 +52,7 @@ class LoadScenarioRequest(BaseModel):
 
 
 class StartTrainingRequest(BaseModel):
-    agent: str = Field(description="a2c | dqn | ppo")
+    agent: str = Field(description="a2c | dqn")
     episodes: int = Field(ge=1, le=1000)
     scenario: str | None = Field(default=None, description="preset id; default = agent's own stress scenario")
     seed: int | None = None

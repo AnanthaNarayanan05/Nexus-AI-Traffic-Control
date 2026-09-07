@@ -177,19 +177,21 @@ def agents() -> dict:
         "agents": {n.value: _dump(a.status()) for n, a in mgr.agents.items()},
         "ownership": {
             "a2c": {"objective": "Emergency vehicle prioritization", "owner": "Anantha Narayanan A"},
-            "dqn": {"objective": "Fuel, emission and violation reduction", "owner": "Shaun Joseph Sabu"},
-            "ppo": {"objective": "Adaptive congestion reduction", "owner": "Delna Liz Denny"},
+            "dqn": {"objective": "Efficiency, fuel, emissions and safety", "owner": "Shaun Joseph Sabu"},
         },
     }
 
 
 @api_router.get("/agents/{agent}")
 def agent_inspector(agent: str) -> dict:
+    mgr = get_manager()
     try:
-        AgentName(agent)
+        name = AgentName(agent)
     except ValueError as exc:
         raise HTTPException(404, f"unknown agent '{agent}'") from exc
-    return get_manager().agent_inspector(agent)
+    if name not in mgr.agents:
+        raise HTTPException(404, f"agent '{agent}' is not in the active scope (A2C + DQN)")
+    return mgr.agent_inspector(agent)
 
 
 # ----------------------------------------------------------------- decisions

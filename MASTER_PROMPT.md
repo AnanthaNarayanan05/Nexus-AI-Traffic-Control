@@ -6,6 +6,19 @@
 > reproduced verbatim. The academic source of truth is
 > [`reference/Smart_Traffic_Signal_Multi_Algorithm.pptx`](reference/Smart_Traffic_Signal_Multi_Algorithm.pptx).
 
+> **⚠️ SUPERSEDED IN PART BY R9 (2026-09-08).** The governing directive is now the
+> *MASTER IMPLEMENTATION PROMPT — R9*. Where R9 and this document disagree, **R9 wins**.
+> Deltas that matter for reading this file:
+> - **Active algorithm scope is A2C + DQN only.** PPO is deprecated / legacy — its code,
+>   checkpoints and unit tests are *preserved* (R9 destructive-change rule) but it is out
+>   of the live loop, coordination, training workflow and primary UI. Every "A2C / DQN / PPO"
+>   phrasing below should be read as "A2C / DQN" for current work.
+> - **DQN objective** is stated by R9 as *efficiency / fuel / emissions / safety*.
+> - Remaining build priorities (R9 §35): P1 evaluation + comparison UI · P2 scenario system
+>   (8 presets + custom builder) · P3 replay + inspectors · P4 export + presentation mode ·
+>   P5 polish · P6 perf/a11y/responsive · P7 docs/QA/demo.
+> - Current honest state: [`docs/STATUS.md`](docs/STATUS.md) (see its "R9 scope revision" section).
+
 ## 1–2. Project & core idea
 **NEXUS AI TRAFFIC CONTROL** — *Three Intelligent Agents. One Coordinated Traffic Control System.*
 Real-time intelligent traffic-control simulator around a 2D urban four-way intersection with **three

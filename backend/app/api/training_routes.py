@@ -66,7 +66,12 @@ def training_run_detail(run_id: str) -> dict:
 @training_router.get("/models")
 def models(agent: str | None = Query(default=None),
            status: str | None = Query(default=None)) -> dict:
-    return {"models": ModelRegistry().list(agent=agent, status=status)}
+    from app.training.manager import ACTIVE_AGENTS
+
+    rows = ModelRegistry().list(agent=agent, status=status)
+    # legacy PPO rows stay in the DB but are not surfaced through the lab (R9)
+    rows = [r for r in rows if r.get("agent") in ACTIVE_AGENTS]
+    return {"models": rows}
 
 
 @training_router.get("/models/{model_id}")

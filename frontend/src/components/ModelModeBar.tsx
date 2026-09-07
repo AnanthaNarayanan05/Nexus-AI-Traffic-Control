@@ -6,13 +6,13 @@
  * authoritative in either mode (section 113).
  */
 
-import { AGENT_LABEL, NO_DATA } from '../lib/format';
+import { ACTIVE_AGENTS, AGENT_LABEL, NO_DATA } from '../lib/format';
 import type { AgentKey } from '../lib/types';
 import { socket } from '../lib/ws';
 import { useSimStore } from '../store';
 import { Badge } from './common/Primitives';
 
-const AGENTS: AgentKey[] = ['a2c', 'dqn', 'ppo'];
+const AGENTS = ACTIVE_AGENTS;
 
 export function ModelModeBar() {
   const status = useSimStore((s) => s.status);

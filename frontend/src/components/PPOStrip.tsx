@@ -1,3 +1,11 @@
+/**
+ * LEGACY - not mounted. PPO is out of the R9 active scope (A2C + DQN only), so this
+ * strip is no longer rendered on the dashboard and `GET /api/v1/agents/ppo` now 404s.
+ * The file is kept (not deleted) so the panel can be restored quickly if PPO is ever
+ * brought back, and as a reference implementation of the per-agent inspector layout.
+ * Do not re-add `<PPOStrip />` to App.tsx without also un-deprecating PPO end to end.
+ */
+
 import { useAgentInspector } from '../hooks/useAgentInspector';
 import { AGENT_OBJECTIVE, AGENT_OWNER, NO_DATA, int, num, pct } from '../lib/format';
 import type { Approach } from '../lib/types';

@@ -4,10 +4,15 @@ Spec §100 (vertical slices), §111 (agent contract), §113 (safety authoritativ
 §84 (no fabricated numbers). Code: `backend/app/training/`, CLI
 `scripts/training/train.py`.
 
-Slice 2, first cut. Each of the three policies is trained **on its own**, against its
-own reward, against a fresh built-in simulation. The coordination engine plays no part
-in training — it is an inference-time concern (PPT slide 20: *"three reward functions,
+Slice 2, first cut. Each policy is trained **on its own**, against its own reward,
+against a fresh built-in simulation. The coordination engine plays no part in
+training — it is an inference-time concern (PPT slide 20: *"three reward functions,
 one behind each algorithm — rather than one shared equation"*).
+
+> **R9 (2026-09-08):** active training scope is **A2C + DQN only**.
+> `TrainingService.start` rejects `agent="ppo"`. The PPO sections and results below are
+> **legacy** — retained for the record and still reproducible from the CLI, but frozen
+> and not extended. See [`STATUS.md`](STATUS.md).
 
 ## Pipeline (identical to the live loop, minus coordination)
 
@@ -49,8 +54,8 @@ Each agent trains on its own stress preset by default (see
 | Agent | Objective | Default scenario |
 |---|---|---|
 | A2C | emergency-vehicle prioritisation | `emergency_heavy` |
-| DQN | fuel / emission / violation | `high_stop_go` |
-| PPO | congestion reduction | `rush_hour` |
+| DQN | efficiency / fuel / emissions / safety | `high_stop_go` |
+| PPO *(legacy)* | congestion reduction | `rush_hour` |
 
 Override with `--scenario <preset id>`.
 
@@ -64,8 +69,8 @@ traffic. Default `S` is `simulation.seed` (42).
 
 ```bash
 python -m scripts.training.train --agent a2c --episodes 200
-python -m scripts.training.train --agent ppo --episodes 300 --scenario rush_hour --seed 7
 python -m scripts.training.train --agent dqn --episodes 50 --episode-seconds 900   # quick
+# python -m scripts.training.train --agent ppo ...   # legacy CLI path still works; PPO is out of R9 scope
 ```
 
 Also `make train AGENT=a2c EPISODES=200`.
@@ -214,7 +219,10 @@ n = 8, wide CIs — indicative only. Report: `models/dqn/eval-20260907T171040Z.j
 - mean-Q drift says the run was **stopped before convergence**; a longer schedule (or a
   lower LR / larger target-update interval) is the obvious next experiment.
 
-### PPO — `ppo-v1.4-dev`, `rush_hour`, seeds 1–8 (held out from training seeds 7–206)
+### PPO — `ppo-v1.4-dev`, `rush_hour`, seeds 1–8 (held out from training seeds 7–206)  *(⚠️ legacy — R9)*
+
+*PPO is out of the R9 active scope. This result is kept for the record; it is not part of
+the current Fixed-Time vs AI comparison workflow.*
 
 Run `ppo-20260907T171054Z`: 200 episodes, 910 s, **3 on-policy updates/episode** (post-tuning;
 was ~1). Return climbs +183 → +220 over the first ~60 episodes, then flat. Block-mean

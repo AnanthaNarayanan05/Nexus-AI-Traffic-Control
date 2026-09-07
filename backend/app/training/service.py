@@ -22,7 +22,7 @@ from typing import Any
 from app.core.config import get_config, get_settings
 from app.logging import get_logger
 from app.training.environment import EpisodeResult
-from app.training.manager import AGENT_CLASSES, DEFAULT_SCENARIO, TrainingManager
+from app.training.manager import ACTIVE_AGENTS, AGENT_CLASSES, DEFAULT_SCENARIO, TrainingManager
 
 log = get_logger("TRAINING")
 
@@ -110,10 +110,14 @@ class TrainingService:
                 "job": job}
 
     def history(self, limit: int = 50) -> list[dict]:
-        """Finished runs, newest first, from the on-disk ``<run_id>.json`` records."""
+        """Finished runs, newest first, from the on-disk ``<run_id>.json`` records.
+
+        Restricted to the active-scope agents; legacy PPO run records stay on disk but
+        are not surfaced through the Training Lab (R9).
+        """
         out: list[dict] = []
         models_dir = get_settings().models_dir
-        for agent in sorted(AGENT_CLASSES):
+        for agent in ACTIVE_AGENTS:
             d = models_dir / agent
             if not d.is_dir():
                 continue
@@ -140,6 +144,10 @@ class TrainingService:
         agent = agent.lower()
         if agent not in AGENT_CLASSES:
             raise KeyError(f"unknown agent '{agent}' (known: {sorted(AGENT_CLASSES)})")
+        if agent not in ACTIVE_AGENTS:
+            raise ValueError(
+                f"agent '{agent}' is deprecated and out of scope - train {list(ACTIVE_AGENTS)} only"
+            )
         episodes = int(episodes)
         if not 1 <= episodes <= MAX_EPISODES:
             raise ValueError(f"episodes must be in 1..{MAX_EPISODES}")

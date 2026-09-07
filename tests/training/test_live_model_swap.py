@@ -58,9 +58,16 @@ def test_trained_checkpoint_flips_is_trained_then_reverts(
 
 
 def test_trained_request_for_a_missing_checkpoint_raises(client_free_manager: SimulationManager):
+    # isolated DB: no DQN checkpoint registered -> honest failure, no fake badge
     with pytest.raises(ValueError, match="no trained model"):
-        client_free_manager.set_model("ppo", "trained")
-    assert client_free_manager.status()["agents"]["ppo"]["is_trained"] is False
+        client_free_manager.set_model("dqn", "trained")
+    assert client_free_manager.status()["agents"]["dqn"]["is_trained"] is False
+
+
+def test_deprecated_ppo_is_rejected_from_live_inference(client_free_manager: SimulationManager):
+    with pytest.raises(ValueError, match="active scope"):
+        client_free_manager.set_model("ppo", "untrained")
+    assert "ppo" not in client_free_manager.status()["model_modes"]
 
 
 @pytest.fixture

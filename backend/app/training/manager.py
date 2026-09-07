@@ -45,11 +45,16 @@ log = get_logger("TRAINING")
 AGENT_CLASSES: dict[str, type[BaseAgent]] = {
     "a2c": A2CAgent,
     "dqn": DQNAgent,
-    "ppo": PPOAgent,
+    "ppo": PPOAgent,  # legacy - retained so pre-R9 checkpoints stay loadable/inspectable
 }
 
+# The agents in the R9 active scope. New training runs are restricted to these
+# (see TrainingService.start); PPO stays in AGENT_CLASSES for backwards compatibility
+# only. docs/STATUS.md tracks the deprecation.
+ACTIVE_AGENTS: tuple[str, ...] = ("a2c", "dqn")
+
 # Each agent's own stress scenario (see app/scenarios/presets.py descriptions):
-#   a2c -> emergency-vehicle prioritisation, dqn -> fuel/emission/violations, ppo -> congestion
+#   a2c -> emergency-vehicle prioritisation, dqn -> efficiency/fuel/emission/violations
 DEFAULT_SCENARIO: dict[str, str] = {
     "a2c": "emergency_heavy",
     "dqn": "high_stop_go",

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  ACTIVE_AGENTS,
   AGENT_LABEL,
   AGENT_OBJECTIVE,
   AGENT_OWNER,
@@ -97,5 +98,11 @@ describe('agent identity maps', () => {
     expect(AGENT_OBJECTIVE.a2c).toMatch(/emergency/i);
     expect(AGENT_OBJECTIVE.dqn).toMatch(/emission/i);
     expect(AGENT_OBJECTIVE.ppo).toMatch(/congestion/i);
+  });
+  it('scopes the active workflow to A2C + DQN only (R9); PPO is legacy', () => {
+    expect([...ACTIVE_AGENTS]).toEqual(['a2c', 'dqn']);
+    expect(ACTIVE_AGENTS).not.toContain('ppo');
+    // the identity maps still carry ppo so legacy checkpoints/records stay renderable
+    expect(AGENT_LABEL.ppo).toBe('PPO');
   });
 });

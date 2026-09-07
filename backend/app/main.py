@@ -49,9 +49,9 @@ def create_app() -> FastAPI:
         title="NEXUS AI Traffic Control",
         version="0.1.0",
         description=(
-            "Three objective-specific RL agents (A2C emergency priority, DQN fuel/emission/"
-            "safety, PPO congestion) coordinated at the signal level, with an authoritative "
-            "safety constraint layer."
+            "Two objective-specific RL agents (A2C emergency priority, DQN efficiency/fuel/"
+            "emission/safety) coordinated at the signal level, with an authoritative safety "
+            "constraint layer. (PPO is a legacy agent, out of the R9 active scope.)"
         ),
         lifespan=lifespan,
     )

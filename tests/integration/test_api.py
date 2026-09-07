@@ -17,10 +17,10 @@ from app.main import create_app
 # factories puts backend/ on sys.path and is imported for that side effect
 from tests import factories  # noqa: F401
 
+# PPO is out of the R9 active scope - A2C + DQN only.
 OWNERS = {
     "a2c": "Anantha Narayanan A",
     "dqn": "Shaun Joseph Sabu",
-    "ppo": "Delna Liz Denny",
 }
 
 
@@ -132,9 +132,9 @@ def test_mode_switch_and_invalid_mode(client):
 
 def test_model_mode_defaults_untrained_and_is_in_status(client):
     st = client.get("/api/v1/simulation/status").json()
-    assert st["model_modes"] == {"a2c": "untrained", "dqn": "untrained", "ppo": "untrained"}
-    assert st["model_sources"] == {"a2c": None, "dqn": None, "ppo": None}
-    for a in ("a2c", "dqn", "ppo"):
+    assert st["model_modes"] == {"a2c": "untrained", "dqn": "untrained"}
+    assert st["model_sources"] == {"a2c": None, "dqn": None}
+    for a in ("a2c", "dqn"):
         assert st["agents"][a]["is_trained"] is False
 
 
@@ -186,15 +186,16 @@ def test_inject_emergency(client):
 # --------------------------------------------------------------- agents
 def test_agents_report_status_and_ownership(client):
     body = client.get("/api/v1/agents").json()
-    assert set(body["agents"]) == {"a2c", "dqn", "ppo"}
+    assert set(body["agents"]) == {"a2c", "dqn"}
     for key, owner in OWNERS.items():
         assert body["ownership"][key]["owner"] == owner
-        # inference-only in this slice: never claim training that did not happen
+        # inference-only by default: never claim training that did not happen
         assert body["agents"][key]["is_trained"] is False
         assert "untrained" in body["agents"][key]["model_version"]
+    assert "ppo" not in body["ownership"]
 
 
-@pytest.mark.parametrize("agent", ["a2c", "dqn", "ppo"])
+@pytest.mark.parametrize("agent", ["a2c", "dqn"])
 def test_agent_inspector(client, agent):
     r = client.get(f"/api/v1/agents/{agent}")
     assert r.status_code == 200
@@ -203,6 +204,10 @@ def test_agent_inspector(client, agent):
     assert body["features"]
     assert body["action_labels"]
     assert len(body["action_distribution"]) == len(body["action_labels"])
+
+
+def test_agent_inspector_rejects_deprecated_ppo(client):
+    assert client.get("/api/v1/agents/ppo").status_code == 404
 
 
 def test_unknown_agent_is_404(client):
@@ -263,6 +268,10 @@ def test_training_start_validates_input(client):
                        json={"agent": "sarsa", "episodes": 1}).status_code == 404
     assert client.post("/api/v1/training/runs",
                        json={"agent": "a2c", "episodes": 0}).status_code == 422
+    # PPO is a known class but out of the R9 active scope -> rejected, not started
+    r = client.post("/api/v1/training/runs", json={"agent": "ppo", "episodes": 1})
+    assert r.status_code == 422
+    assert "scope" in r.json()["detail"]
 
 
 def test_models_registry_endpoint(client):

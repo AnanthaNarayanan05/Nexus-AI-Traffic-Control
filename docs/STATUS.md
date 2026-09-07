@@ -2,13 +2,32 @@
 
 Honest state of the build (spec §98 — nothing unimplemented is dressed up as done). Updated per slice.
 
-Legend: ✅ working end-to-end · 🟡 partial / scaffolded · ⬜ not started
+Legend: ✅ working end-to-end · 🟡 partial / scaffolded · ⬜ not started · ⚠️ deprecated / legacy (kept, not extended)
 
-## Slice 1 — Foundation + simulation + full three-agent vertical slice  *(complete, inference-only)*
+## R9 scope revision (2026-09-08)
+
+The governing directive is now **MASTER IMPLEMENTATION PROMPT — R9**. Key change to the
+algorithm roster:
+
+- **Active scope = A2C + DQN only.** A2C → emergency-vehicle prioritization (owner
+  Anantha Narayanan A). DQN → efficiency / fuel / emissions / safety (owner Shaun Joseph Sabu).
+- **PPO is ⚠️ deprecated / legacy.** Per the R9 destructive-change rule it was *not*
+  deleted: `AgentName.PPO`, `app/agents/ppo/*`, PPO checkpoints + registry rows, PPO unit
+  tests and the `AGENT_LABEL/OBJECTIVE/OWNER.ppo` maps all remain so pre-R9 artefacts stay
+  loadable and inspectable. What changed: the live decision loop, the coordination
+  pipeline, the training workflow (`ACTIVE_AGENTS` gate) and the primary frontend now only
+  touch A2C + DQN. New PPO training runs are rejected; `GET /api/v1/agents/ppo` → 404;
+  `POST /simulation/model {agent:"ppo"}` → rejected; `PPOStrip.tsx` is unmounted.
+- R9 priority order for remaining work: **P1** evaluation correctness + comparison UI →
+  **P2** preset/custom scenario system → **P3** replay + inspectors → **P4** export +
+  presentation mode → **P5** UI polish → **P6** performance / a11y / responsive →
+  **P7** docs / QA / reproducibility / demo readiness.
+
+## Slice 1 — Foundation + simulation + full agent vertical slice  *(complete, inference-only)*
 
 Verified end-to-end 2026-09-07: built-in sim → FastAPI → WebSocket → PixiJS render →
-A2C/DQN/PPO decision loop → coordination → safety → applied phase → measured metrics,
-all in the browser. `pytest tests/` (176, incl. Slice 2) + `vitest` (35) green;
+agent decision loop → coordination → safety → applied phase → measured metrics,
+all in the browser. `pytest tests/` (177, incl. Slice 2 + R9 deprecation) + `vitest` (36) green;
 `npm run build` + `eslint` + `tsc -b` clean.
 
 | Area | State | Notes |
@@ -21,9 +40,9 @@ all in the browser. `pytest tests/` (176, incl. Slice 2) + `vitest` (35) green;
 | Signal controller + phase state machine | ✅ | served→YELLOW→ALL_RED→served; authoritative `approach_colors` on the wire |
 | Safety constraint layer | ✅ | 8 rules, authoritative; `action_taken` ∈ APPLIED/REWRITTEN_TRANSITION/BLOCKED_HOLD/FORCED_CHANGE/EMERGENCY_TIMEOUT |
 | Coordination engine | ✅ | deterministic priority ladder, weighted phase scoring, consensus detection |
-| A2C agent (net, state builder, reward, inference) | ✅ | inference-only in the live loop; `is_trained=false` reported honestly |
-| DQN agent | ✅ | inference-only in the live loop; raw Q-values exposed |
-| PPO agent | ✅ | inference-only in the live loop; GAE/clip `learn()` exercised by training (Slice 2) |
+| A2C agent (net, state builder, reward, inference) | ✅ | live loop; emergency-vehicle prioritization; `is_trained` reported honestly |
+| DQN agent | ✅ | live loop; efficiency / fuel / emissions / safety; raw Q-values exposed |
+| PPO agent | ⚠️ | **legacy** — code + checkpoints retained and loadable, but removed from the live loop, coordination and training workflow (R9). `GET /agents/ppo` → 404. |
 | Fixed-time baseline controller | ✅ | 60 s cycle; measurably different from AI mode |
 | Manual control | ✅ | HOLD/SWITCH/EXTEND/REDUCE/SET_* via REST + WS |
 | Metrics aggregator | ✅ | rolling + episode windows; fuel/CO₂ flagged ESTIMATED |
@@ -31,11 +50,11 @@ all in the browser. `pytest tests/` (176, incl. Slice 2) + `vitest` (35) green;
 | `SimulationManager` decision loop | ✅ | own thread; reward for decision N realised at N+1 (on-policy order) |
 | Frontend shell + command bar | ✅ | start/pause/step/reset, mode, scenario, speed, inject; live/paused, sim clock, seed, cfg digest |
 | PixiJS `SimulationStage` | ✅ | config-driven geometry, roads, vehicles (eased), signal lamps, queue counts, view-radius zoom |
-| A2C / DQN / PPO dashboard panels | ✅ | actor bars, critic V(s), Q(s,a), queue pressure, reward decomposition, UNTRAINED badge |
-| Coordination bar | ✅ | 3 recs → winner + basis → safety verdict + ladder trace + score breakdown |
+| A2C / DQN dashboard panels | ✅ | actor bars, critic V(s), Q(s,a), queue pressure, reward decomposition, honest trained/UNTRAINED badge. `PPOStrip.tsx` retained but ⚠️ unmounted (R9). |
+| Coordination bar | ✅ | A2C + DQN recs → winner + basis → safety verdict + ladder trace + score breakdown (engine still accepts N recs; PPO no longer feeds it) |
 | Metrics row + event timeline | ✅ | filterable TRAFFIC/AI/EMERGENCY/SAFETY/VIOLATION/SYSTEM; server errors surfaced verbatim |
 | Agent inspector REST polling | ✅ | `GET /agents/{name}` on a 2 s poll; not streamed (cost) |
-| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation) | ✅ | `pytest tests/` → 176 pass (agents 64, coordination 14, safety 17, simulation 10, integration/API+WS 30, training 16, evaluation 8, training-service 5, persistence 12); `vitest` → 35 pass (format, store wiring incl. `training_update`, scene geometry, Training Lab, model-mode bar) |
+| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation) | ✅ | `pytest tests/` → **177 pass** (incl. R9: PPO rejected from live inference + agent inspector); `vitest` → **36 pass** (incl. `ACTIVE_AGENTS` scope lock). PPO unit tests (agent contract, reward, state builder) retained and green — legacy code stays covered. |
 
 ## Slice 2 — training loops  *(in progress)*
 
@@ -53,19 +72,24 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 | A2C evaluated (8 held-out seeds) | ✅ | vs fixed-time: emergency delay **+28.8%**, emergency wait **+52.2%**, avg waiting **+61.1%**, speed +33.9%; throughput −7.7% (noisy). Trained ≫ untrained (untrained is catastrophic). Caveat: 147 safety overrides/ep — policy leans on the safety layer. Full table in [`training.md`](training.md). |
 | DQN training | ✅ | replay fills (~2 episodes) then target-net updates every `train_freq` (~151/episode). **Run `dqn-20260907T165632Z`, `high_stop_go`, 200 episodes, 773 s.** Return −492 (first 5) → −475 (last 5); ε floors at 0.05 by ~ep 67; mean Q drifts −18 → −45 (not fully converged). `models/dqn/latest.pt` = `dqn-v1.4-dev`. |
 | DQN evaluated (8 held-out seeds) | ✅ | vs fixed-time: avg waiting **+62.9%**, avg queue **+50.8%**, idle time **+52.3%**, speed +43.6%, stops/veh +12.4%, fuel/CO₂ per veh **+2.6% / +2.4%** (its objective), emergency wait +32.3%. **Cost: red-light violations −35.7% (7.0 → 9.5/ep), other violations −70%, 27 safety overrides/ep.** Trained ≫ untrained (catastrophic). Full table in [`training.md`](training.md). |
-| PPO training | ✅ | tuned: `rollout_steps` 512 → 200 + episode-end flush → **3 real updates/episode** (was ~1); seeded minibatch shuffle → reproducible. **Run `ppo-20260907T171054Z`, `rush_hour`, 200 episodes, 910 s.** Return +183 → +220 over first ~60 ep then flat; entropy 1.38 → ~0.9. `models/ppo/latest.pt` = `ppo-v1.4-dev`. |
-| PPO evaluated (8 held-out seeds) | ✅ | vs fixed-time: avg waiting **+30.7%**, avg queue +42.2%, speed **+65.7%**, stops/veh +30.4%, travel time +8.4%, fuel/CO₂ per veh +6.4% / +6.0%. **Cost: throughput −12.6%**; 47 safety overrides/ep. Untrained PPO is *not* catastrophic here (unlike A2C/DQN) so the trained-vs-random gap is smaller. Full table in [`training.md`](training.md). |
+| PPO training | ⚠️ | **legacy — frozen at R9, not extended.** Historical run `ppo-20260907T171054Z` (`rush_hour`, 200 episodes, 910 s) and `models/ppo/latest.pt` (`ppo-v1.4-dev`) are kept and loadable. `TrainingService.start` now rejects `agent="ppo"`. |
+| PPO evaluated (8 held-out seeds) | ⚠️ | legacy result kept for the record (vs fixed-time: avg waiting +30.7%, speed +65.7%, throughput −12.6%, 47 safety overrides/ep). PPO is out of the R9 comparison workflow. Full table in [`training.md`](training.md). |
 | SQLite model registry + versioning | ✅ | `app/persistence` (SQLAlchemy 2 + SQLite at `data/nexus.db`). `models` table: agent, version, checkpoint path, run id, scenario, seed, episodes, training + reward config, config digest, git sha, torch version, timestamps, eval metrics, status (`trained`→`evaluated`→`active`, one `active`/agent). `TrainingManager` auto-registers its final checkpoint; `evaluate --register` attaches the comparison blob; `scripts.training.backfill_registry` imports pre-registry runs. 12 tests. Doc: [`persistence.md`](persistence.md). |
 | `TrainingService` (background job + live progress) | ✅ | one run at a time on its own thread; publishes an immutable snapshot polled by REST/WS; `history()` from on-disk run records. 6 tests. |
 | Training REST API | ✅ | `GET /api/v1/training` (status + job + history), `POST /api/v1/training/runs` (start, 409 if busy), `GET /api/v1/training/runs[/{id}]`, `GET /api/v1/models[/{id}]`. `experiments` + `replay` still 404 (§98). |
 | Training WebSocket progress | ✅ | `training_update` frame (`{seq, running, job:{phase, episode, progress, returns, last_episode:{return, losses, metrics}, ...}}`) pushed on every published change; real episode measurements only (§84). |
 | Training Lab UI (`#/training`) | ✅ | hash route (no react-router). Legend spells out **TRAINING vs EVALUATION vs LIVE INFERENCE**. Start-a-run form (agent/episodes/scenario/seed/checkpoint-every → `POST /training/runs`), live-run panel (progress bar, episode-return sparkline, last-episode losses/metrics — fed by the `training_update` WS frame, REST-polled fallback), finished-runs + model-registry tables with status badges. All values are real backend measurements (§84). 4 vitest specs. |
-| Trained-vs-fixed comparison UI | ⬜ | eval JSON reports exist; surfacing them in the lab is a later sub-slice |
+| Trained-vs-fixed comparison UI | ⬜ | **R9 P1** — eval JSON reports exist; real `GET /api/v1/experiments` + Experiment Lab (scenario/controller/model/seed select, honest Fixed-Time vs AI metric table with absolute + % diff + winner/direction) is the next work item |
 | Trained checkpoint wired into live `SimulationManager` | ✅ | `POST /api/v1/simulation/model {agent, mode, version?}` + `set_model` WS command. `mode:"trained"` loads the agent's `active` (else latest) registry checkpoint, validates the file exists **and** that `trained_episodes > 0` post-load — otherwise 400 and the agent is left untouched (no fake `is_trained`, §84/§114). `mode:"untrained"` always restores fresh weights. Status carries `model_modes` + `model_sources`; agent `is_trained` flips honestly. Safety stays authoritative in both modes (§113). Front end: `ModelModeBar` on the dashboard (per-agent UNTRAINED/TRAINED toggle + honest badge). Tests: +6 pytest (integration + live-swap with a real checkpoint), +2 vitest. |
 
-## Later slices — not started
+## R9 remaining work — not started (priority order)
 
-Experiment Lab + comparison UI · Experience-replay inspector · full inspectors (vehicle / emergency /
-signal / coordination "brain") · Scenario Lab UI · Replay engine + UI · presentation mode ·
-notifications · keyboard shortcuts · CSV/JSON/HTML export · low-power quality modes · responsive
-breakpoints · accessibility pass · performance audit · Docker images.
+| P | Item | Notes |
+|---|---|---|
+| P1 | Evaluation correctness + comparison UI | real `GET /api/v1/experiments` backed by the evaluation harness + persistence; Experiment Lab (§16) — scenario/controller/model/seed(s) select, run, honest Fixed-Time vs AI table (absolute diff + % diff + winner + better-direction, lower-vs-higher interpreted correctly, never % without baseline values), multi-seed aggregate, reproducibility record |
+| P2 | Preset + custom scenario system | expand presets to the 8 required (§8A: NORMAL, RUSH HOUR, EMERGENCY RESPONSE, UNEQUAL DEMAND, STOP-GO EFFICIENCY, ROAD BLOCKAGE, SAFETY/VIOLATION, MIXED CRISIS) with name/description/objective/AI-focus/difficulty; custom builder (§8B) with all user-safe params, validation, human-readable preview, SAVE/LOAD/DUPLICATE/DELETE (persisted); safety layer never user-disableable |
+| P3 | Replay + inspectors | lightweight replay (§18: play/pause/seek/step/speed/events), `GET /api/v1/replay`; Vehicle / Emergency / Signal / AI-Coordination inspectors (§19) |
+| P4 | Export + presentation mode | CSV + JSON export (§23, HTML desirable); presentation/demo mode (§24) — reduced controls, clean narrative |
+| P5 | Premium UI polish | |
+| P6 | Performance (60 FPS) · accessibility · responsive | |
+| P7 | Final docs · QA · reproducibility · demo readiness | §39 quality-bar checklist |
