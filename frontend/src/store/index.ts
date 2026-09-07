@@ -13,6 +13,7 @@ import type {
   MetricSnapshot,
   ScenarioSummary,
   SimStatus,
+  TrainingSnapshot,
 } from '../lib/types';
 
 /* ------------------------------------------------------------------ simulation */
@@ -89,6 +90,17 @@ export const useEventStore = create<EventStore>((set) => ({
   clear: () => set({ events: [] }),
 }));
 
+/* ------------------------------------------------------------------ training */
+
+interface TrainingStore {
+  /** Latest snapshot from the `training_update` WS channel, or null until one arrives. */
+  snapshot: TrainingSnapshot | null;
+}
+
+export const useTrainingStore = create<TrainingStore>(() => ({
+  snapshot: null,
+}));
+
 /* ------------------------------------------------------------------ wiring */
 
 /**
@@ -152,6 +164,9 @@ export function wireSocket(): void {
         useSimStore.setState({
           lastError: { ...frame.payload, at: Date.now() },
         });
+        break;
+      case 'training_update':
+        useTrainingStore.setState({ snapshot: frame.payload });
         break;
       default:
         break;

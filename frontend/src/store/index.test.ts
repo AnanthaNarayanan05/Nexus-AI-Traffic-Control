@@ -33,6 +33,7 @@ import {
   useAgentStore,
   useEventStore,
   useSimStore,
+  useTrainingStore,
   wireSocket,
 } from './index';
 
@@ -73,6 +74,7 @@ beforeEach(() => {
   });
   useAgentStore.setState({ agents: {}, coordination: null });
   useEventStore.setState({ events: [], filters: new Set(ALL_CATEGORIES) });
+  useTrainingStore.setState({ snapshot: null });
 });
 
 describe('connection state', () => {
@@ -153,6 +155,17 @@ describe('frame dispatch', () => {
 
     useSimStore.getState().clearError();
     expect(useSimStore.getState().lastError).toBeNull();
+  });
+
+  it('training_update lands in the training store verbatim', () => {
+    expect(useTrainingStore.getState().snapshot).toBeNull();
+    dispatch({
+      type: 'training_update',
+      payload: { seq: 4, running: true, job: { run_id: 'a2c-x', phase: 'running', episode: 3 } },
+    });
+    const snap = useTrainingStore.getState().snapshot;
+    expect(snap).toMatchObject({ seq: 4, running: true });
+    expect(snap?.job).toMatchObject({ run_id: 'a2c-x', episode: 3 });
   });
 
   it('ignores unknown frame types without throwing', () => {

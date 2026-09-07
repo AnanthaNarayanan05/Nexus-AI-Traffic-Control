@@ -8,7 +8,7 @@ Legend: ✅ working end-to-end · 🟡 partial / scaffolded · ⬜ not started
 
 Verified end-to-end 2026-09-07: built-in sim → FastAPI → WebSocket → PixiJS render →
 A2C/DQN/PPO decision loop → coordination → safety → applied phase → measured metrics,
-all in the browser. `pytest tests/` (170, incl. Slice 2) + `vitest` (29) green;
+all in the browser. `pytest tests/` (170, incl. Slice 2) + `vitest` (33) green;
 `npm run build` + `eslint` + `tsc -b` clean.
 
 | Area | State | Notes |
@@ -35,7 +35,7 @@ all in the browser. `pytest tests/` (170, incl. Slice 2) + `vitest` (29) green;
 | Coordination bar | ✅ | 3 recs → winner + basis → safety verdict + ladder trace + score breakdown |
 | Metrics row + event timeline | ✅ | filterable TRAFFIC/AI/EMERGENCY/SAFETY/VIOLATION/SYSTEM; server errors surfaced verbatim |
 | Agent inspector REST polling | ✅ | `GET /agents/{name}` on a 2 s poll; not streamed (cost) |
-| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation) | ✅ | `pytest tests/` → 170 pass (agents 64, coordination 14, safety 17, simulation 10, integration/API+WS 27, training 13, evaluation 8, training-service 5, persistence 12); `vitest` → 29 pass |
+| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation) | ✅ | `pytest tests/` → 170 pass (agents 64, coordination 14, safety 17, simulation 10, integration/API+WS 27, training 13, evaluation 8, training-service 5, persistence 12); `vitest` → 33 pass (format, store wiring incl. `training_update`, scene geometry, Training Lab) |
 
 ## Slice 2 — training loops  *(in progress)*
 
@@ -59,7 +59,8 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 | `TrainingService` (background job + live progress) | ✅ | one run at a time on its own thread; publishes an immutable snapshot polled by REST/WS; `history()` from on-disk run records. 6 tests. |
 | Training REST API | ✅ | `GET /api/v1/training` (status + job + history), `POST /api/v1/training/runs` (start, 409 if busy), `GET /api/v1/training/runs[/{id}]`, `GET /api/v1/models[/{id}]`. `experiments` + `replay` still 404 (§98). |
 | Training WebSocket progress | ✅ | `training_update` frame (`{seq, running, job:{phase, episode, progress, returns, last_episode:{return, losses, metrics}, ...}}`) pushed on every published change; real episode measurements only (§84). |
-| Training Lab UI (`/training`) + trained-vs-fixed comparison | ⬜ | next sub-slice |
+| Training Lab UI (`#/training`) | ✅ | hash route (no react-router). Legend spells out **TRAINING vs EVALUATION vs LIVE INFERENCE**. Start-a-run form (agent/episodes/scenario/seed/checkpoint-every → `POST /training/runs`), live-run panel (progress bar, episode-return sparkline, last-episode losses/metrics — fed by the `training_update` WS frame, REST-polled fallback), finished-runs + model-registry tables with status badges. All values are real backend measurements (§84). 4 vitest specs. |
+| Trained-vs-fixed comparison UI | ⬜ | eval JSON reports exist; surfacing them in the lab is a later sub-slice |
 | Trained checkpoint wired into live `SimulationManager` | ⬜ | live app still inference-only (honest `UNTRAINED` badges) |
 
 ## Later slices — not started

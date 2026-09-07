@@ -317,6 +317,124 @@ export interface ScenarioSummary {
   duration_s: number;
 }
 
+/* ------------------------------------------------------------------ training */
+
+export type TrainingPhase = 'idle' | 'running' | 'completed' | 'failed';
+
+export interface TrainingEpisode {
+  episode: number;
+  return: number;
+  mean_reward: number;
+  decisions: number;
+  updates: number;
+  safety_overrides: number;
+  losses: Record<string, number>;
+  wall_time_s: number;
+  metrics: Record<string, number>;
+}
+
+export interface TrainingJob {
+  run_id: string;
+  agent: AgentKey;
+  scenario: string;
+  seed: number;
+  episodes_requested: number;
+  phase: TrainingPhase;
+  episode: number;
+  progress: number;
+  started_at: string;
+  finished_at: string | null;
+  wall_time_s: number;
+  error: string | null;
+  returns: number[];
+  last_episode: TrainingEpisode | null;
+  final_checkpoint: string | null;
+  final_model_version: string | null;
+  registered_model_id: string | null;
+}
+
+export interface TrainingSnapshot {
+  seq: number;
+  running: boolean;
+  job: TrainingJob | null;
+  history?: TrainingRunSummary[];
+}
+
+export interface TrainingRunSummary {
+  run_id: string;
+  agent: AgentKey | null;
+  scenario: string | null;
+  seed: number | null;
+  episodes: number;
+  started_at: string | null;
+  finished_at: string | null;
+  wall_time_s: number | null;
+  final_model_version: string | null;
+  final_checkpoint: string | null;
+  first_return: number | null;
+  last_return: number | null;
+  config_digest: string | null;
+}
+
+export interface TrainingRunDetail {
+  run_id: string;
+  agent: AgentKey;
+  scenario: string;
+  seed: number;
+  episodes_requested: number;
+  started_at: string;
+  finished_at: string | null;
+  wall_time_s: number;
+  episode_seeds: number[];
+  episode_returns: number[];
+  episodes: TrainingEpisode[];
+  checkpoints: string[];
+  final_checkpoint: string | null;
+  final_model_version: string | null;
+  reproducibility: Record<string, unknown>;
+}
+
+export type ModelStatus = 'trained' | 'evaluated' | 'active' | 'archived';
+
+export interface ModelRecord {
+  id: string;
+  agent: AgentKey;
+  version: string;
+  checkpoint_path: string;
+  run_id: string;
+  scenario: string;
+  seed: number;
+  episodes: number;
+  training_config: Record<string, unknown>;
+  reward_config: Record<string, unknown>;
+  env_version: string;
+  code_version: string | null;
+  torch_version: string | null;
+  created_at: string;
+  evaluated_at: string | null;
+  eval_scenario: string | null;
+  eval_metrics: EvalComparison | null;
+  status: ModelStatus;
+  notes: string | null;
+}
+
+export interface EvalComparison {
+  scenario: string;
+  baseline: string;
+  seeds: number[];
+  n_episodes: number;
+  metrics: Record<
+    string,
+    {
+      lower_is_better: boolean;
+      values: Record<
+        string,
+        { mean: number; ci_half_width: number; improvement_pct_vs_baseline: number | null }
+      >;
+    }
+  >;
+}
+
 export interface HelloPayload {
   protocol_version: string;
   config_digest: string;
@@ -348,4 +466,5 @@ export type Frame =
       t: number;
       payload: { code: string; message: string; detail?: Record<string, unknown> };
     }
+  | { type: 'training_update'; seq: number; t: number; payload: TrainingSnapshot }
   | { type: 'pong'; seq: number; t: number; payload: { server_time: number } };

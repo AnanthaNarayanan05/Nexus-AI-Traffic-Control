@@ -3,8 +3,12 @@ import type {
   AgentKey,
   AgentStatus,
   MetricSnapshot,
+  ModelRecord,
   ScenarioSummary,
   SimStatus,
+  TrainingRunDetail,
+  TrainingRunSummary,
+  TrainingSnapshot,
 } from './types';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? 'http://127.0.0.1:8000';
@@ -76,6 +80,28 @@ export const api = {
       overrides_total: number;
       checks_total: number;
     }>(`/safety/overrides?limit=${limit}`),
+
+  // ---- training + model registry (Slice 2) ----
+  training: (history = 20) =>
+    request<TrainingSnapshot>(`/training?history=${history}`),
+  startTraining: (body: {
+    agent: AgentKey;
+    episodes: number;
+    scenario?: string | null;
+    seed?: number | null;
+    checkpoint_every?: number;
+  }) => post<TrainingSnapshot>('/training/runs', body),
+  trainingRuns: (limit = 50) =>
+    request<{ runs: TrainingRunSummary[] }>(`/training/runs?limit=${limit}`),
+  trainingRun: (runId: string) => request<TrainingRunDetail>(`/training/runs/${runId}`),
+  models: (agent?: AgentKey, status?: string) => {
+    const q = new URLSearchParams();
+    if (agent) q.set('agent', agent);
+    if (status) q.set('status', status);
+    const qs = q.toString();
+    return request<{ models: ModelRecord[] }>(`/models${qs ? `?${qs}` : ''}`);
+  },
+  model: (modelId: string) => request<ModelRecord>(`/models/${modelId}`),
 };
 
 export const API_BASE = BASE;

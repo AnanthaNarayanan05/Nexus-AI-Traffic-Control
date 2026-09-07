@@ -9,10 +9,35 @@ import { MetricsRow } from '../components/MetricsRow';
 import { PPOStrip } from '../components/PPOStrip';
 import { SimulationStage } from '../components/SimulationStage';
 import { api } from '../lib/api';
+import { useHashRoute } from '../lib/hashRoute';
 import { useSimStore } from '../store';
+import { TrainingLab } from '../training/TrainingLab';
+
+function Dashboard() {
+  return (
+    <main className="dashboard">
+      <div className="column">
+        <A2CPanel />
+        <PPOStrip />
+      </div>
+
+      <div className="centre-column">
+        <SimulationStage />
+        <CoordinationBar />
+        <MetricsRow />
+      </div>
+
+      <div className="column">
+        <DQNPanel />
+        <EventTimeline />
+      </div>
+    </main>
+  );
+}
 
 export function App() {
   const setScenarios = useSimStore((s) => s.setScenarios);
+  const [route, go] = useHashRoute();
 
   // Scenario list is static per server process; fetched once over REST rather than
   // streamed.
@@ -35,23 +60,16 @@ export function App() {
     <div className="app">
       <CommandBar />
 
-      <main className="dashboard">
-        <div className="column">
-          <A2CPanel />
-          <PPOStrip />
-        </div>
+      <nav className="view-tabs" aria-label="View">
+        <button className={route === '' ? 'active' : ''} onClick={() => go('')}>
+          Live Control
+        </button>
+        <button className={route === 'training' ? 'active' : ''} onClick={() => go('training')}>
+          Training Lab
+        </button>
+      </nav>
 
-        <div className="centre-column">
-          <SimulationStage />
-          <CoordinationBar />
-          <MetricsRow />
-        </div>
-
-        <div className="column">
-          <DQNPanel />
-          <EventTimeline />
-        </div>
-      </main>
+      {route === 'training' ? <TrainingLab /> : <Dashboard />}
     </div>
   );
 }

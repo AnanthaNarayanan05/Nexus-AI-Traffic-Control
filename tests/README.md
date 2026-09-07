@@ -36,5 +36,7 @@ cd frontend && npm run test      # vitest run
 ```
 
 `src/lib/format.test.ts`, `src/store/index.test.ts` (socket wiring via a stubbed
-`socket`), `src/render/scene.test.ts` (world-frame direction vectors + geometry
-constants vs the backend).
+`socket`, incl. the `training_update` frame), `src/render/scene.test.ts` (world-frame
+direction vectors + geometry constants vs the backend), `src/training/TrainingLab.test.tsx`
+(the `#/training` view: TRAINING/EVALUATION/LIVE-INFERENCE framing, idle live-run state,
+registry rows — API client stubbed).

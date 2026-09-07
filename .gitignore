@@ -27,6 +27,8 @@ models/**/*.zip
 models/**/*.json
 !models/.gitkeep
 *.db
+*.db-shm
+*.db-wal
 *.sqlite3
 !database/.gitkeep
 
