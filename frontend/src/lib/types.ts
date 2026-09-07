@@ -312,15 +312,52 @@ export interface SimStatus {
 
 export type ModelMode = 'untrained' | 'trained';
 
+export type ScenarioDifficulty = 'easy' | 'moderate' | 'hard' | 'extreme';
+
 export interface ScenarioSummary {
   id: string;
   name: string;
   description: string;
   preset: boolean;
+  /** R9 §8A presentation metadata — display only, never touches the simulation. */
+  objective: string;
+  ai_focus: string;
+  difficulty: ScenarioDifficulty;
   arrivals_vph: number;
   weights: Record<string, number>;
   emergency_probability_per_min: number;
+  violation_probability_scale: number;
+  blocked_lanes: { approach: string; lane: number }[];
+  /** Count of mid-episode demand changes, not the changes themselves. */
+  scheduled_changes: number;
   duration_s: number;
+}
+
+/** The full editable scenario blob — mirrors backend `ScenarioConfig`. */
+export interface ScenarioConfig {
+  id: string;
+  name: string;
+  description: string;
+  objective: string;
+  ai_focus: string;
+  difficulty: ScenarioDifficulty;
+  demand: {
+    weights: Record<string, number>;
+    arrivals_vph: number;
+    turn_split: Record<string, number>;
+  };
+  scheduled_changes: {
+    at_s: number;
+    profile: { weights: Record<string, number>; arrivals_vph: number; turn_split: Record<string, number> };
+  }[];
+  emergency_probability_per_min: number;
+  violation_probability_scale: number;
+  accident_probability_per_min: number;
+  blocked_lanes: { approach: string; lane: number }[];
+  weather: string;
+  time_of_day: string;
+  duration_s: number;
+  seed: number;
 }
 
 /* ------------------------------------------------------------------ training */

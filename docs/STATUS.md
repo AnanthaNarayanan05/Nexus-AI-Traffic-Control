@@ -19,20 +19,27 @@ algorithm roster:
   touch A2C + DQN. New PPO training runs are rejected; `GET /api/v1/agents/ppo` → 404;
   `POST /simulation/model {agent:"ppo"}` → rejected; `PPOStrip.tsx` is unmounted.
 - R9 priority order for remaining work: ~~**P1** evaluation correctness + comparison UI~~ ✅ →
-  **P2** preset/custom scenario system → **P3** replay + inspectors → **P4** export +
+  ~~**P2** preset/custom scenario system~~ ✅ → **P3** replay + inspectors → **P4** export +
   presentation mode → **P5** UI polish → **P6** performance / a11y / responsive →
   **P7** docs / QA / reproducibility / demo readiness.
 - **P1 done (2026-09-08):** `ExperimentService` + `GET/POST /api/v1/experiments` +
   `experiments` persistence table + Experiment Lab (`#/experiments`) with the honest
   Fixed-Time vs AI comparison table. See the Slice 2 table below and
   [`experiments.md`](experiments.md).
+- **P2 done (2026-09-08):** all 8 §8A preset scenarios with objective / AI-focus /
+  difficulty metadata; `ScenarioConfig` bounds validation (out-of-range → 422, unknown
+  field rejected, safety layer has no scenario switch); `scenarios` persistence table +
+  `ScenarioStore`; `POST/DELETE /api/v1/scenarios`, `POST /api/v1/scenarios/{id}/duplicate`;
+  Scenario Lab (`#/scenarios`) — preset browser + custom builder with plain-English preview
+  and SAVE / DUPLICATE / DELETE / LOAD. See the Slice 2 table below and
+  [`scenarios.md`](scenarios.md).
 
 ## Slice 1 — Foundation + simulation + full agent vertical slice  *(complete, inference-only)*
 
 Verified end-to-end 2026-09-07: built-in sim → FastAPI → WebSocket → PixiJS render →
 agent decision loop → coordination → safety → applied phase → measured metrics,
-all in the browser. `pytest tests/` (191, incl. Slice 2 + R9 deprecation + P1 experiments) +
-`vitest` (46) green; `npm run build` + `eslint` + `tsc -b` clean.
+all in the browser. `pytest tests/` (217, incl. Slice 2 + R9 deprecation + P1 experiments +
+P2 scenarios) + `vitest` (51) green; `npm run build` + `eslint` + `tsc -b` clean.
 
 | Area | State | Notes |
 |---|---|---|
@@ -58,7 +65,7 @@ all in the browser. `pytest tests/` (191, incl. Slice 2 + R9 deprecation + P1 ex
 | Coordination bar | ✅ | A2C + DQN recs → winner + basis → safety verdict + ladder trace + score breakdown (engine still accepts N recs; PPO no longer feeds it) |
 | Metrics row + event timeline | ✅ | filterable TRAFFIC/AI/EMERGENCY/SAFETY/VIOLATION/SYSTEM; server errors surfaced verbatim |
 | Agent inspector REST polling | ✅ | `GET /agents/{name}` on a 2 s poll; not streamed (cost) |
-| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation, experiments) | ✅ | `pytest tests/` → **191 pass** (incl. R9: PPO rejected from live inference + agent inspector; P1: experiment store + service + API); `vitest` → **46 pass** (incl. `ACTIVE_AGENTS` scope lock, `ComparisonTable` honesty rules, `ExperimentLab`). PPO unit tests (agent contract, reward, state builder) retained and green — legacy code stays covered. |
+| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation, experiments, scenarios) | ✅ | `pytest tests/` → **217 pass** (incl. R9: PPO rejected from live inference + agent inspector; P1: experiment store + service + API; P2: preset-metadata completeness + `ScenarioStore` CRUD + validation + persistence round-trip + scenario API); `vitest` → **51 pass** (incl. `ACTIVE_AGENTS` scope lock, `ComparisonTable` honesty rules, `ExperimentLab`, `ScenarioLab`). PPO unit tests (agent contract, reward, state builder) retained and green — legacy code stays covered. |
 
 ## Slice 2 — training loops  *(in progress)*
 
@@ -87,13 +94,17 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 | Experiments REST + WS + persistence | ✅ | `GET /api/v1/experiments?history=` (snapshot + past runs), `POST /api/v1/experiments` (202; 409 busy, 404 unknown scenario, 422 bad controllers/seeds/missing checkpoint), `GET /api/v1/experiments/{id}` (full detail). New `experiments` SQLite table (scenario, controllers, seeds, baseline, reproducibility, comparison blob, per-controller results, status). `experiment_update` WS frame. +8 tests (store + integration). |
 | Trained-vs-fixed comparison UI | ✅ | **R9 P1** — Experiment Lab (`#/experiments`): scenario select, controller checkboxes (Fixed-Time / A2C / DQN) with per-agent model selector, seed list, optional episode length → `POST /experiments`; live progress panel; past-experiments table; **honest `ComparisonTable`** — baseline column always shown (never % without absolute values, §16), per-metric direction (↓/↑), absolute Δ + direction-aware % (green only when it moved the *better* way), "within noise" when \|Δ\| ≤ combined 95% CI, winner = best controller only when it clears the runner-up by more than their combined CI. Fed by `experiment_update` WS frame + REST poll. +9 vitest. |
 | Trained checkpoint wired into live `SimulationManager` | ✅ | `POST /api/v1/simulation/model {agent, mode, version?}` + `set_model` WS command. `mode:"trained"` loads the agent's `active` (else latest) registry checkpoint, validates the file exists **and** that `trained_episodes > 0` post-load — otherwise 400 and the agent is left untouched (no fake `is_trained`, §84/§114). `mode:"untrained"` always restores fresh weights. Status carries `model_modes` + `model_sources`; agent `is_trained` flips honestly. Safety stays authoritative in both modes (§113). Front end: `ModelModeBar` on the dashboard (per-agent UNTRAINED/TRAINED toggle + honest badge). Tests: +6 pytest (integration + live-swap with a real checkpoint), +2 vitest. |
+| Preset scenario system (§8A) | ✅ | **R9 P2.** All 8 required presets — `normal`, `rush_hour`, `emergency_heavy`, `uneven`, `high_stop_go`, `incident`, `safety_violation`, `mixed_crisis` — built lazily from `config.yaml` demand profiles, each carrying `objective` / `ai_focus` / `difficulty` display metadata (display-only, never touches the sim). `surge_midway` kept as a 9th non-required preset (exercises `scheduled_changes`; pre-R9 rows may reference it — destructive-change rule). New demand profiles `safety_stress`, `mixed_crisis`. Doc: [`scenarios.md`](scenarios.md). |
+| `ScenarioConfig` validation (§8B) | ✅ | Pydantic bounds: weights non-negative + non-zero total, `arrivals_vph` ∈ (0, 12000], `duration_s` ∈ [60, 14400], event rates ≥ 0 and capped, `blocked_lanes` valid approach + lane 0–2 + never every lane of an approach, scheduled changes before episode end, id is a slug, weather / time-of-day enumerated. `extra="forbid"` — an unknown field is a 422, so no request can smuggle a knob (there is **no** scenario-level switch for the authoritative safety layer, §113). Out-of-range → 422, never a silent clamp. |
+| Custom scenario persistence + CRUD | ✅ | New `scenarios` SQLite table + `ScenarioStore` facade (`save` upsert / `get` / `list` / `delete`). `app.scenarios.presets` loads custom rows lazily (`_load_custom`, keeps per-test SQLite isolation), `register_scenario(persist=True)`, `delete_scenario` (rejects preset ids). REST: `POST /api/v1/scenarios` (422 bad input, 409 preset-id collision), `POST /api/v1/scenarios/{id}/duplicate`, `DELETE /api/v1/scenarios/{id}` (409 preset, 404 unknown). `GET /scenarios` list carries the metadata; `scenario_detail` returns the full blob. +26 pytest (preset-metadata completeness, `ScenarioStore` CRUD, validation rejects bad input, persistence round-trip, custom scenario actually runs an episode, scenario API). |
+| Scenario Lab UI (`#/scenarios`) | ✅ | **R9 P2** — hash route (no react-router). Left: preset + custom scenario list with difficulty badge + objective + AI-focus. Right: read-only view for presets (**Duplicate to edit**), full editable form for custom (name / id-slug, description, objective, AI-focus, difficulty, demand weights + arrivals + turn split, emergency / violation / accident rates, closed-lane add/remove, mid-episode demand changes, weather / time-of-day, duration, seed). Plain-English **preview** paragraph regenerated live from the draft. SAVE / DUPLICATE / DELETE / **Load into simulation**. Server 422/409 messages surfaced verbatim. `cache: 'no-store'` added to the API client so a backend restart can't serve a stale list. 5 vitest specs. |
 
 ## R9 remaining work (priority order)
 
 | P | Item | Notes |
 |---|---|---|
 | P1 | Evaluation correctness + comparison UI | ✅ **done 2026-09-08** — `ExperimentService` + `experiments` REST/WS/persistence + Experiment Lab with the honest `ComparisonTable` (see Slice 2 table). Multi-seed mean ± 95% CI, reproducibility blob, direction-aware improvement %, never % without baseline values. |
-| P2 | Preset + custom scenario system | expand presets to the 8 required (§8A: NORMAL, RUSH HOUR, EMERGENCY RESPONSE, UNEQUAL DEMAND, STOP-GO EFFICIENCY, ROAD BLOCKAGE, SAFETY/VIOLATION, MIXED CRISIS) with name/description/objective/AI-focus/difficulty; custom builder (§8B) with all user-safe params, validation, human-readable preview, SAVE/LOAD/DUPLICATE/DELETE (persisted); safety layer never user-disableable |
+| P2 | Preset + custom scenario system | ✅ **done 2026-09-08** — 8 §8A presets with objective / AI-focus / difficulty; `ScenarioConfig` bounds validation (422 not clamp; `extra="forbid"` blocks smuggled knobs; no safety switch); `scenarios` table + `ScenarioStore`; `POST` / `DELETE` / `duplicate` REST; Scenario Lab (`#/scenarios`) preset browser + custom builder with plain-English preview + SAVE / DUPLICATE / DELETE / LOAD. See Slice 2 table + [`scenarios.md`](scenarios.md). |
 | P3 | Replay + inspectors | lightweight replay (§18: play/pause/seek/step/speed/events), `GET /api/v1/replay`; Vehicle / Emergency / Signal / AI-Coordination inspectors (§19) |
 | P4 | Export + presentation mode | CSV + JSON export (§23, HTML desirable); presentation/demo mode (§24) — reduced controls, clean narrative |
 | P5 | Premium UI polish | |

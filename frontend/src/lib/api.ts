@@ -7,6 +7,7 @@ import type {
   ExperimentSnapshot,
   MetricSnapshot,
   ModelRecord,
+  ScenarioConfig,
   ScenarioSummary,
   SimStatus,
   TrainingRunDetail,
@@ -28,6 +29,9 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}/api/v1${path}`, {
+    // API responses are live state, never a static asset — don't let the browser
+    // serve a stale disk-cached copy (e.g. after the backend restarts).
+    cache: 'no-store',
     headers: { 'Content-Type': 'application/json' },
     ...init,
   });
@@ -66,7 +70,13 @@ export const api = {
     post<{ injected: string; ids: string[] }>('/simulation/inject', { event, args }),
 
   scenarios: () => request<{ scenarios: ScenarioSummary[] }>('/scenarios'),
+  scenario: (id: string) => request<ScenarioConfig>(`/scenarios/${id}`),
   loadScenario: (id: string, seed?: number) => post<SimStatus>('/scenarios/load', { id, seed }),
+  createScenario: (config: ScenarioConfig) => post<ScenarioConfig>('/scenarios', config),
+  duplicateScenario: (id: string, newId: string, name?: string) =>
+    post<ScenarioConfig>(`/scenarios/${id}/duplicate`, { new_id: newId, name: name ?? null }),
+  deleteScenario: (id: string) =>
+    request<{ deleted: string }>(`/scenarios/${id}`, { method: 'DELETE' }),
 
   agents: () =>
     request<{

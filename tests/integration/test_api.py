@@ -59,15 +59,30 @@ def test_config_exposes_digest_and_geometry(client):
 
 
 # --------------------------------------------------------------- scenarios
+REQUIRED_PRESETS = {
+    "normal", "rush_hour", "emergency_heavy", "uneven",
+    "high_stop_go", "incident", "safety_violation", "mixed_crisis",
+}
+
+
 def test_scenarios_list_and_detail(client):
     r = client.get("/api/v1/scenarios")
     assert r.status_code == 200
-    ids = {s["id"] for s in r.json()["scenarios"]}
-    assert {"normal", "rush_hour", "emergency_heavy"} <= ids
+    rows = r.json()["scenarios"]
+    ids = {s["id"] for s in rows}
+    assert REQUIRED_PRESETS <= ids  # all 8 R9 §8A presets present
+
+    for s in rows:
+        if s["id"] in REQUIRED_PRESETS:
+            assert s["preset"] is True
+            assert s["objective"] and s["ai_focus"]  # presentation metadata is filled in
+            assert s["difficulty"] in {"easy", "moderate", "hard", "extreme"}
 
     r = client.get("/api/v1/scenarios/rush_hour")
     assert r.status_code == 200
-    assert r.json()["id"] == "rush_hour"
+    body = r.json()
+    assert body["id"] == "rush_hour"
+    assert body["objective"] and body["difficulty"] == "hard"
 
     assert client.get("/api/v1/scenarios/does_not_exist").status_code == 404
 
@@ -77,6 +92,59 @@ def test_scenario_load_by_id(client):
     assert r.status_code == 200
     assert r.json()["scenario"]["id"] == "uneven"
     assert client.get("/api/v1/simulation/status").json()["scenario"]["id"] == "uneven"
+
+
+def test_scenario_create_validates_and_persists(client):
+    good = {
+        "id": "api-custom-1", "name": "API custom", "description": "made over REST",
+        "objective": "watch queues", "ai_focus": "dqn", "difficulty": "moderate",
+        "demand": {"weights": {"N": 0.3, "E": 0.2, "S": 0.3, "W": 0.2}, "arrivals_vph": 1800},
+        "emergency_probability_per_min": 0.5,
+    }
+    r = client.post("/api/v1/scenarios", json=good)
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == "api-custom-1"
+
+    # it now shows up in the list as a non-preset
+    listed = {s["id"]: s for s in client.get("/api/v1/scenarios").json()["scenarios"]}
+    assert listed["api-custom-1"]["preset"] is False
+
+    # a preset id cannot be overwritten
+    assert client.post("/api/v1/scenarios", json={**good, "id": "normal"}).status_code == 409
+
+    # out-of-range values are a 422, not a clamp
+    bad = {**good, "id": "api-bad", "emergency_probability_per_min": 999}
+    assert client.post("/api/v1/scenarios", json=bad).status_code == 422
+    # unknown field is rejected (can't smuggle a knob past validation)
+    smuggle = {**good, "id": "api-smuggle", "disable_safety_layer": True}
+    assert client.post("/api/v1/scenarios", json=smuggle).status_code == 422
+
+
+def test_scenario_duplicate_and_delete(client):
+    src = {
+        "id": "dup-src", "name": "Dup source", "difficulty": "hard",
+        "demand": {"weights": {"N": 1, "E": 1, "S": 1, "W": 1}, "arrivals_vph": 1600},
+    }
+    assert client.post("/api/v1/scenarios", json=src).status_code == 200
+
+    r = client.post("/api/v1/scenarios/dup-src/duplicate", json={"new_id": "dup-copy"})
+    assert r.status_code == 200, r.text
+    assert r.json()["id"] == "dup-copy" and r.json()["name"] == "Copy of Dup source"
+
+    # duplicating a preset into a custom id is allowed
+    r = client.post("/api/v1/scenarios/normal/duplicate",
+                    json={"new_id": "my-normal", "name": "My normal"})
+    assert r.status_code == 200 and r.json()["id"] == "my-normal"
+
+    # can't duplicate onto a preset id
+    assert client.post("/api/v1/scenarios/dup-src/duplicate",
+                       json={"new_id": "rush_hour"}).status_code in (409, 422)
+
+    # delete the custom one; preset deletion is refused
+    assert client.delete("/api/v1/scenarios/dup-copy").status_code == 200
+    assert client.get("/api/v1/scenarios/dup-copy").status_code == 404
+    assert client.delete("/api/v1/scenarios/normal").status_code == 409
+    assert client.delete("/api/v1/scenarios/never-existed").status_code == 404
 
 
 # --------------------------------------------------------------- simulation control

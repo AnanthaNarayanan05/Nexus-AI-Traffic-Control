@@ -51,6 +51,12 @@ class LoadScenarioRequest(BaseModel):
     seed: int | None = None
 
 
+class DuplicateScenarioRequest(BaseModel):
+    new_id: str = Field(description="slug id for the copy; must not collide with a preset")
+    name: str | None = Field(default=None, max_length=120,
+                             description="name for the copy; defaults to 'Copy of <source>'")
+
+
 class StartTrainingRequest(BaseModel):
     agent: str = Field(description="a2c | dqn")
     episodes: int = Field(ge=1, le=1000)

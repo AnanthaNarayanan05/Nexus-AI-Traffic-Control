@@ -11,6 +11,7 @@ import { SimulationStage } from '../components/SimulationStage';
 import { ExperimentLab } from '../experiments/ExperimentLab';
 import { api } from '../lib/api';
 import { useHashRoute } from '../lib/hashRoute';
+import { ScenarioLab } from '../scenarios/ScenarioLab';
 import { useSimStore } from '../store';
 import { TrainingLab } from '../training/TrainingLab';
 
@@ -74,12 +75,20 @@ export function App() {
         >
           Experiment Lab
         </button>
+        <button
+          className={route === 'scenarios' ? 'active' : ''}
+          onClick={() => go('scenarios')}
+        >
+          Scenario Lab
+        </button>
       </nav>
 
       {route === 'training' ? (
         <TrainingLab />
       ) : route === 'experiments' ? (
         <ExperimentLab />
+      ) : route === 'scenarios' ? (
+        <ScenarioLab />
       ) : (
         <Dashboard />
       )}

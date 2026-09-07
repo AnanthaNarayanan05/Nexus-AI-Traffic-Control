@@ -1,5 +1,5 @@
-"""ORM tables: the model registry (`models`) and experiments (`experiments`),
-docs/experiments.md §5."""
+"""ORM tables: the model registry (`models`), experiments (`experiments`) and
+user-saved scenarios (`scenarios`), docs/experiments.md §5."""
 
 from __future__ import annotations
 
@@ -20,6 +20,33 @@ MODEL_STATUSES = ("trained", "evaluated", "active", "archived")
 
 # status lifecycle for an experiment run
 EXPERIMENT_STATUSES = ("running", "completed", "failed")
+
+
+class ScenarioRecord(Base):
+    """One user-saved (custom) scenario, R9 §8B.
+
+    Presets are code (`app.scenarios.presets`) and never live here. A row is the full
+    `ScenarioConfig` JSON blob plus a couple of denormalised columns for cheap listing.
+    The scenario id is the primary key, so a save is an upsert and preset ids are
+    rejected before they ever reach this table.
+    """
+
+    __tablename__ = "scenarios"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120), default="")
+    config: Mapped[dict] = mapped_column(JSON, default=dict)   # full ScenarioConfig blob
+    created_at: Mapped[str] = mapped_column(String(40), default=_utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(String(40), default=_utcnow_iso)
+
+    def as_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "config": self.config or {},
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+        }
 
 
 class ModelRecord(Base):

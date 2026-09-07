@@ -12,6 +12,7 @@ from typing import Any
 from fastapi import APIRouter, HTTPException, Query
 
 from app.api.models import (
+    DuplicateScenarioRequest,
     InjectRequest,
     LoadScenarioRequest,
     ManualRequest,
@@ -23,7 +24,13 @@ from app.api.models import (
 )
 from app.core.config import get_config, get_settings
 from app.core.simulation_manager import get_manager
-from app.scenarios import get_scenario, list_scenarios, register_scenario
+from app.scenarios import (
+    PRESET_IDS,
+    delete_scenario,
+    get_scenario,
+    list_scenarios,
+    register_scenario,
+)
 from app.schemas.enums import AgentName
 from app.schemas.scenario import ScenarioConfig
 
@@ -150,10 +157,43 @@ def scenario_detail(scenario_id: str) -> dict:
 
 @api_router.post("/scenarios")
 def scenario_create(body: ScenarioConfig) -> dict:
+    # Field / bound validation already happened when FastAPI parsed the body (422).
     try:
         return _dump(register_scenario(body))
     except ValueError as exc:
         raise HTTPException(409, str(exc)) from exc
+
+
+@api_router.post("/scenarios/{scenario_id}/duplicate")
+def scenario_duplicate(scenario_id: str, body: DuplicateScenarioRequest) -> dict:
+    try:
+        source = get_scenario(scenario_id)
+    except KeyError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    copy = source.model_copy(deep=True)
+    copy.id = body.new_id
+    copy.name = body.name or f"Copy of {source.name}"
+    try:
+        copy = ScenarioConfig.model_validate(copy.model_dump(mode="json"))
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    try:
+        return _dump(register_scenario(copy))
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+
+
+@api_router.delete("/scenarios/{scenario_id}")
+def scenario_delete(scenario_id: str) -> dict:
+    if scenario_id in PRESET_IDS:
+        raise HTTPException(409, f"'{scenario_id}' is a preset and cannot be deleted")
+    try:
+        delete_scenario(scenario_id)
+    except KeyError as exc:
+        raise HTTPException(404, f"unknown scenario '{scenario_id}'") from exc
+    except ValueError as exc:  # defensive - preset guard already handled above
+        raise HTTPException(409, str(exc)) from exc
+    return {"deleted": scenario_id}
 
 
 @api_router.post("/scenarios/load")

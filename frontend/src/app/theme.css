@@ -1206,3 +1206,158 @@ tr.cmp-row-click:hover {
 tr.cmp-row-active {
   background: rgba(77, 141, 255, 0.14);
 }
+
+/* ------------------------------------------------------------------ scenario lab */
+
+.scn-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 4px 0 10px;
+}
+
+.scn-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.scn-item:hover {
+  border-color: var(--border);
+}
+
+.scn-item.active {
+  border-color: var(--accent);
+  background: rgba(77, 141, 255, 0.1);
+}
+
+.scn-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.scn-item-name {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.scn-item-obj {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+.scn-item-focus {
+  font-size: 9.5px;
+  color: var(--text-faint);
+}
+
+.scn-form {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.scn-form:disabled {
+  opacity: 0.75;
+}
+
+.scn-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--text-faint);
+  text-transform: uppercase;
+}
+
+.scn-form input,
+.scn-form select {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  color: var(--text);
+  padding: 5px 7px;
+  font: inherit;
+  font-size: 11.5px;
+}
+
+.scn-form input:disabled,
+.scn-form select:disabled {
+  color: var(--text-dim);
+}
+
+.scn-weights {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.scn-lanes,
+.scn-changes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.scn-lane-row,
+.scn-change-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.scn-change-row label {
+  flex: 1 1 120px;
+}
+
+.scn-preview {
+  margin: 0;
+  padding: 9px 11px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 5px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.scn-preview strong {
+  color: var(--text);
+}
+
+.scn-preview-obj {
+  margin: 0;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.scn-notice {
+  margin: 0;
+  padding: 7px 10px;
+  background: rgba(46, 224, 106, 0.08);
+  border: 1px solid rgba(46, 224, 106, 0.3);
+  border-radius: 5px;
+  font-size: 11px;
+  color: var(--green);
+}
+
+@media (max-width: 720px) {
+  .scn-weights {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

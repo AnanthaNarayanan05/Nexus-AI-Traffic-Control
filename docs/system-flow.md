@@ -57,8 +57,11 @@ POST /api/v1/simulation/start|pause|reset
 POST /api/v1/simulation/mode              { mode }
 POST /api/v1/simulation/manual            { action }           (MANUAL mode)
 POST /api/v1/simulation/inject            { event, args }      ambulance / surge / blockage / violation
-GET  /api/v1/scenarios                    presets + saved
-POST /api/v1/scenarios                    create / save
+GET  /api/v1/scenarios                    presets + saved (summary + §8A metadata)
+GET  /api/v1/scenarios/{id}               full ScenarioConfig blob
+POST /api/v1/scenarios                    create / save custom (422 bad input, 409 preset id)
+POST /api/v1/scenarios/{id}/duplicate     { new_id, name? }  copy any scenario to a custom id
+DELETE /api/v1/scenarios/{id}             delete custom (409 preset, 404 unknown)
 POST /api/v1/scenarios/load               { id | inline config }
 GET  /api/v1/agents                       status of all three
 GET  /api/v1/agents/{a2c|dqn|ppo}         full inspector payload (+ ?paused_at=)

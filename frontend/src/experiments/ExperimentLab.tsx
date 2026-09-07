@@ -94,6 +94,7 @@ function StartExperimentForm({
     });
 
   const chosen = CONTROLLER_OPTIONS.map((c) => c.key).filter((k) => controllers.has(k));
+  const selectedScenario = scenarios.find((s) => s.id === scenario) ?? null;
   const parsedSeeds = parseSeeds(seeds);
   const usesTrained = chosen.some((c) => c !== 'fixed_time' && (models[c] ?? 'untrained') !== 'untrained');
   const valid = scenario !== '' && chosen.length >= 1 && parsedSeeds.length >= 1;
@@ -129,12 +130,18 @@ function StartExperimentForm({
             {scenarios.length === 0 ? <option value="">loading…</option> : null}
             {scenarios.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.name}
+                {s.name} · {s.difficulty}
                 {s.preset ? '' : ' (custom)'}
               </option>
             ))}
           </select>
         </label>
+        {selectedScenario ? (
+          <p className="train-form-owner">
+            {selectedScenario.objective || selectedScenario.description}
+            {selectedScenario.ai_focus ? ` — ${selectedScenario.ai_focus}` : ''}
+          </p>
+        ) : null}
 
         <div className="cmp-controllers">
           <SectionLabel>CONTROLLERS</SectionLabel>

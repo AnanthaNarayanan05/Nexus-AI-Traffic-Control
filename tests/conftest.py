@@ -21,13 +21,16 @@ def _isolated_db(tmp_path_factory, monkeypatch):
     """
     from app.core import config as _cfg
     from app.persistence.db import reset_engine_for_tests
+    from app.scenarios.presets import _reset_custom_for_tests
 
     db_path = tmp_path_factory.mktemp("db") / "nexus.db"
     monkeypatch.setenv("NEXUS_DB_URL", f"sqlite:///{db_path.as_posix()}")
     _cfg.get_settings.cache_clear()
     reset_engine_for_tests()
+    _reset_custom_for_tests()
     yield
     reset_engine_for_tests()
+    _reset_custom_for_tests()
     _cfg.get_settings.cache_clear()
 
 

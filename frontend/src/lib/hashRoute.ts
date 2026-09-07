@@ -3,14 +3,15 @@
  * handful of top-level views (the live dashboard, the Training Lab, the Experiment
  * Lab), so a `location.hash` lookup with a subscription is enough.
  *
- * Routes are the bare hash without the `#`: '' (dashboard), 'training', 'experiments'.
+ * Routes are the bare hash without the `#`: '' (dashboard), 'training', 'experiments',
+ * 'scenarios'.
  */
 
 import { useCallback, useSyncExternalStore } from 'react';
 
-export type Route = '' | 'training' | 'experiments';
+export type Route = '' | 'training' | 'experiments' | 'scenarios';
 
-const ROUTES: Route[] = ['', 'training', 'experiments'];
+const ROUTES: Route[] = ['', 'training', 'experiments', 'scenarios'];
 
 function parse(hash: string): Route {
   const clean = hash.replace(/^#\/?/, '').split(/[?/]/)[0] as Route;

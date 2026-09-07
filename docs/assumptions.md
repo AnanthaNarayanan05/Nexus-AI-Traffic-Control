@@ -15,6 +15,24 @@ recorded here. `[PPT]` = fixed by the source; everything below is an engineering
 - **A5. One isolated intersection, 3 lanes/approach** (left / through / through+right). Network scale is
   deliberately small (spec §97, §99).
 
+## Scenarios (R9 §8A / §8B)
+- **A23. The eight §8A presets and their metadata.** `objective`, `ai_focus` and
+  `difficulty` (`easy`/`moderate`/`hard`/`extreme`) are written per preset in
+  `app/scenarios/presets.py`; they are presentation copy, read by the UI only, never by
+  the simulation. Difficulty ratings are an editorial judgement. `surge_midway` is kept
+  as a ninth, non-required preset (it is the one that exercises `scheduled_changes`).
+- **A24. Custom-scenario bounds are engineering caps, not source values.**
+  `arrivals_vph ≤ 12000`, `duration_s ∈ [60, 14400]`, emergency / accident rate `≤ 60`/min,
+  `violation_probability_scale ≤ 20`, and a lane closure may never seal every lane of an
+  approach. They exist to keep the microsim inside a regime where it is meaningful; a
+  value outside them is rejected (`422`), never clamped. `ScenarioConfig` also forbids
+  unknown fields so no request can introduce a knob — in particular there is no
+  scenario-level control over the authoritative safety layer.
+- **A25. New demand profiles `safety_stress` and `mixed_crisis`** in
+  `config.yaml → demand.profiles` back the `safety_violation` and `mixed_crisis` presets
+  (balanced-heavy and asymmetric-very-heavy respectively). Weights and arrival rates are
+  engineering choices, consistent with the existing profiles.
+
 ## Signal timing
 - **A6.** `min_green = 8 s`, `max_green = 60 s`, `yellow = 3 s`, `all_red = 2 s`,
   `emergency_max_priority = 45 s`. Typical urban values; all in `config.yaml`, all enforced by the safety
