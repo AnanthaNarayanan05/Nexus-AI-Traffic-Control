@@ -79,8 +79,10 @@ class PPOAgent(BaseAgent):
         self.value_coef = float(p.value_coef)
         self.entropy_coef = float(p.entropy_coef)
         self.max_grad_norm = float(p.max_grad_norm)
+        self.update_at_episode_end = bool(p.get("update_at_episode_end", True))
         self.training = training
         self.norm = Normalizer()
+        self._rng = np.random.default_rng(seed)  # seeded minibatch shuffling (reproducible)
 
         self._rollout: list[_Step] = []
         self.stats = _TrainStats()
@@ -181,8 +183,19 @@ class PPOAgent(BaseAgent):
         self._rollout[-1].reward = float(reward)
         self._rollout[-1].done = bool(done)
 
-    def learn(self) -> dict[str, float]:
-        if not self.training or len(self._rollout) < self.rollout_steps:
+    _MIN_UPDATE_STEPS = 16
+
+    def learn(self, *, force: bool = False) -> dict[str, float]:
+        if not self.training:
+            return {}
+        n_buffered = len(self._rollout)
+        # normal cadence: update once the rollout is full. force=True (episode end)
+        # updates on a short rollout so trailing on-policy steps are not discarded -
+        # but a handful of steps is too few for a stable advantage estimate.
+        if force:
+            if n_buffered < self._MIN_UPDATE_STEPS:
+                return {}
+        elif n_buffered < self.rollout_steps:
             return {}
         steps = self._rollout
         self._rollout = []
@@ -212,7 +225,7 @@ class PPOAgent(BaseAgent):
         kl_acc = clip_acc = 0.0
         batches = 0
         for _ in range(self.epochs):
-            np.random.shuffle(idx)
+            self._rng.shuffle(idx)
             for start in range(0, n, self.minibatch):
                 mb = idx[start:start + self.minibatch]
                 mb_t = torch.as_tensor(mb, dtype=torch.int64)
@@ -252,6 +265,9 @@ class PPOAgent(BaseAgent):
         }
 
     def end_episode(self, episode_return: float) -> None:
+        if self.training and self.update_at_episode_end:
+            self.learn(force=True)
+        self._rollout = []  # a rollout never carries across an episode / seed boundary
         self.trained_episodes += 1
         self.stats.episode_returns.append(episode_return)
         self.note_reward(episode_return)

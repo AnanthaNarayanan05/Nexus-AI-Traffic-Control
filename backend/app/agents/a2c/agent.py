@@ -188,9 +188,11 @@ class A2CAgent(BaseAgent):
         self._rollout[-1].reward = float(reward)
         self._rollout[-1].done = bool(done)
 
-    def learn(self) -> dict[str, float]:
+    def learn(self, *, force: bool = False) -> dict[str, float]:
         ready = [s for s in self._rollout if s.reward is not None]
-        if len(ready) < self.n_steps and not (ready and ready[-1].done):
+        if not ready:
+            return {}
+        if len(ready) < self.n_steps and not force and not ready[-1].done:
             return {}
         steps = ready
         self._rollout = self._rollout[len(steps):]

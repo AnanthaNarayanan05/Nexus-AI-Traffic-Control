@@ -93,9 +93,14 @@ Checkpoint payload (per agent `save()`): `state_dict`, `trained_episodes`,
 - **DQN** — fills the replay buffer to `rl.dqn.learning_starts` (1000 transitions ≈ first
   ~2 episodes) before the first gradient step; then trains every `train_freq` steps with
   a target network.
-- **PPO** — one GAE + clipped-surrogate update once the rollout reaches
-  `rl.ppo.rollout_steps` (512); roughly one update per episode at the 600-decision
-  cadence. Tuning the rollout length for more frequent updates is a follow-up.
+- **PPO** — GAE + clipped-surrogate update once the rollout reaches
+  `rl.ppo.rollout_steps` (200), i.e. ~3 updates per 600-decision episode. Each update
+  runs `rl.ppo.epochs` (6) passes over the rollout in `minibatch_size` (64) chunks,
+  shuffled by a seeded RNG (reproducible). At episode end, `update_at_episode_end`
+  forces one more update on the leftover rollout (if it holds at least
+  `PPOAgent._MIN_UPDATE_STEPS` = 16 steps) and then clears it, so a rollout never
+  spans two episodes or two seeds. `learn(force=True)` is the episode-end path;
+  off-policy DQN ignores `force`.
 
 ## Evaluation
 

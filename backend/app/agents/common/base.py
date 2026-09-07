@@ -58,8 +58,13 @@ class BaseAgent(abc.ABC):
                 next_state: SimulationState, done: bool, info: dict | None = None) -> None: ...
 
     @abc.abstractmethod
-    def learn(self) -> dict[str, float]:
-        """Run at most one update step; return training metrics (may be empty)."""
+    def learn(self, *, force: bool = False) -> dict[str, float]:
+        """Run at most one update step; return training metrics (may be empty).
+
+        ``force=True`` asks an on-policy agent (A2C, PPO) to update on whatever it has
+        buffered even if the rollout is short - used at episode end so no experience is
+        dropped. Off-policy DQN ignores it.
+        """
 
     # -- persistence ------------------------------------------------------------
     @abc.abstractmethod

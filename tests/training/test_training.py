@@ -87,6 +87,21 @@ def test_a2c_runs_real_gradient_steps():
     assert {"actor_loss", "critic_loss", "entropy"} <= set(r.losses)
 
 
+def test_ppo_updates_several_times_per_episode():
+    """PPO tuning regression guard (rollout_steps=200, episode-end flush).
+
+    Before tuning, a 600-decision episode drove ~1 PPO update (rollout_steps=512
+    spanning the whole episode). It must now drive several real on-policy updates.
+    Uses a full-length episode on purpose — the bug only shows at scale.
+    """
+    sc = get_scenario("rush_hour")  # full duration: 600 decisions
+    agent = build_agent("ppo", seed=7, training=True)
+    r = TrainingEnv(agent, sc, seed=7).run_episode(1)
+    assert r.decisions >= 500
+    assert r.updates >= 3
+    assert {"policy_loss", "value_loss", "approx_kl", "clip_fraction"} <= set(r.losses)
+
+
 def test_same_seed_reproduces_episode():
     a = _env("ppo", "rush_hour", seed=7).run_episode(1)
     b = _env("ppo", "rush_hour", seed=7).run_episode(1)

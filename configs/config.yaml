@@ -102,13 +102,15 @@ rl:
     epsilon_end: 0.05
     epsilon_decay_steps: 40000
   ppo:
-    rollout_steps: 512
-    epochs: 4
+    rollout_steps: 200          # ~3 on-policy updates per 600-decision episode (was 512 -> ~1)
+    epochs: 6                   # was 4
     minibatch_size: 64
     clip_range: 0.2
     value_coef: 0.5
     entropy_coef: 0.01
     max_grad_norm: 0.5
+    update_at_episode_end: true # force an update on the leftover rollout at episode end,
+                                # then clear it, so a rollout never spans two episodes/seeds
 
 reward:
   # Weights are per-agent (PPT slide 20: "three reward functions, one behind

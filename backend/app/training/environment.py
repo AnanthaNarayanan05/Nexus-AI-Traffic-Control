@@ -122,7 +122,7 @@ class TrainingEnv:
 
         final_state = self.adapter.get_state()
         realise(final_state, done=True)                        # terminal transition
-        flushed = self.agent.learn()                           # drain any on-policy remainder
+        flushed = self.agent.learn(force=True)                 # drain any on-policy remainder
         if flushed:
             for key, val in flushed.items():
                 loss_sums[key] = loss_sums.get(key, 0.0) + float(val)

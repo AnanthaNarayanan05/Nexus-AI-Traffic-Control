@@ -170,7 +170,8 @@ class DQNAgent(BaseAgent):
             info=info or {"action": ACTION_LABELS[int(action_index)]},
         ))
 
-    def learn(self) -> dict[str, float]:
+    def learn(self, *, force: bool = False) -> dict[str, float]:
+        # DQN is off-policy (replay buffer); `force` is a no-op for it.
         if not self.training or len(self.buffer) < self.learning_starts:
             return {}
         if self._env_steps % self.train_freq != 0:
