@@ -87,6 +87,27 @@ Checkpoint payload (per agent `save()`): `state_dict`, `trained_episodes`,
 `model_version`, `meta` (`run_id`, `scenario`, `seed`, `episode`, `config_digest`,
 `trained_at`); DQN also stores `env_steps`.
 
+## REST + WebSocket
+
+`app/training/service.py` runs **one** job at a time on its own thread (mirrors
+`SimulationManager`: heavy work off the event loop, readers poll an immutable snapshot).
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/training` | service status + current job + `?history=` recent finished runs |
+| `POST` | `/api/v1/training/runs` | start a run `{agent, episodes, scenario?, seed?, checkpoint_every?}` — `409` if one is already running, `422` on bad input |
+| `GET` | `/api/v1/training/runs` | finished runs (from the on-disk `<run_id>.json` records) |
+| `GET` | `/api/v1/training/runs/{run_id}` | full run record |
+| `GET` | `/api/v1/models` | model-registry rows — `?agent=` `?status=` |
+| `GET` | `/api/v1/models/{model_id}` | one registry row |
+
+WebSocket: a `training_update` frame is pushed on every published change —
+`{seq, running, job: {run_id, agent, scenario, seed, phase, episode, progress, returns,
+last_episode: {return, mean_reward, decisions, updates, safety_overrides, losses, metrics},
+final_checkpoint, registered_model_id, error}}`. `phase ∈ idle | running | completed | failed`.
+Every value is a real measurement from that episode (§84); a failed run reports the
+exception, it is never hidden.
+
 ## What runs, per algorithm
 
 - **A2C** — n-step returns every `rl.a2c.n_steps` (20) decisions; updates from episode 1.
@@ -193,11 +214,55 @@ n = 8, wide CIs — indicative only. Report: `models/dqn/eval-20260907T171040Z.j
 - mean-Q drift says the run was **stopped before convergence**; a longer schedule (or a
   lower LR / larger target-update interval) is the obvious next experiment.
 
+### PPO — `ppo-v1.4-dev`, `rush_hour`, seeds 1–8 (held out from training seeds 7–206)
+
+Run `ppo-20260907T171054Z`: 200 episodes, 910 s, **3 on-policy updates/episode** (post-tuning;
+was ~1). Return climbs +183 → +220 over the first ~60 episodes, then flat. Block-mean
++198.6 (first 5) → +221.3 (last 5), delta +22.7. Entropy 1.38 → ~0.9 with noise.
+
+| Metric | fixed-time | untrained PPO | **trained PPO** | trained vs fixed |
+|---|--:|--:|--:|--:|
+| avg vehicle waiting (s) | 9.49 | 9.12 | **6.58** | **+30.7 %** |
+| avg queue (veh) | 4.22 | 2.31 | **2.44** | +42.2 % |
+| travel time (s) | 56.56 | 64.27 | 51.83 | +8.4 % |
+| avg speed (m/s) | 4.82 | 7.92 | **7.98** | +65.7 % |
+| stops / veh | 0.53 | 0.52 | **0.37** | +30.4 % |
+| idle time (s) | 9.15 | 16.28 | 7.57 | +17.3 % |
+| fuel / veh (est.) | 0.106 | 0.108 | 0.099 | +6.4 % |
+| CO₂ / veh (est.) | 0.265 | 0.270 | 0.249 | +6.0 % |
+| **throughput (vph)** | 2970 | 3233 | **2595** | **−12.6 %** |
+| red-light violations / ep | 4.0 | 3.6 | 3.1 | +21.9 % |
+| safety overrides / episode | 0.0 | 59.4 | **47.1** | — |
+
+n = 8, wide CIs. Report: `models/ppo/eval-20260907T172809Z.json`.
+
+**Reading it honestly:**
+- Trained PPO cuts waiting, queues, stops and travel time hard vs fixed-time and moves
+  more smoothly (speed +66 %), with a fuel/CO₂ co-benefit.
+- **Unlike A2C and DQN, untrained PPO is *not* catastrophic** on `rush_hour` (waiting 9.1
+  ≈ fixed-time's 9.5). Training still helps — trained beats untrained on waiting, travel
+  time, stops and fuel — but the "trained ≫ random" gap is much smaller here, and untrained
+  actually pushes higher throughput.
+- **Throughput −12.6 %** is the real cost and it is the *same pattern in all three agents*:
+  they trade raw vehicles-served for smoother, lower-delay flow. None of the three reward
+  functions weights throughput heavily — this is a reward-design finding, flagged for the
+  coordinated-AI comparison and a penalty/weight review, not a training bug.
+- 47 safety overrides/episode — again the policy proposes aggressively and the safety layer
+  bounds it (§113-compliant).
+
+### Cross-agent notes
+
+Two findings recur across A2C, DQN and PPO and belong in the write-up:
+1. **Throughput dips** (−7.7 % / −8.8 % / −12.6 %) while every delay/queue/stop metric
+   improves. Consistent trade, driven by reward weighting, not a bug.
+2. **Heavy reliance on the safety layer** (147 / 27 / 47 overrides per episode). The
+   safety controller is authoritative and doing its job; "learned behaviour" is partly
+   "propose aggressively, get bounded". Reward-shaping to discourage the aggressive
+   proposals is the follow-up.
+
 ## Not yet (next sub-slice)
 
-- tuned PPO full run, evaluated the same way (config tuned + smoke-verified; run pending)
-- DQN convergence follow-up (longer schedule) + reward-penalty review for A2C/DQN
-- `GET /api/v1/training` + `TrainingManager` progress streamed over WS
+- DQN convergence follow-up (longer schedule); reward-penalty / throughput-weight review for all three
 - Training Lab UI (`/training` route) and trained-vs-fixed-time comparison
 - wiring a chosen (`active`) checkpoint into the live `SimulationManager` agent registry
 

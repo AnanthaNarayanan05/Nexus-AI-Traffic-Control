@@ -1,11 +1,13 @@
 """REST + WebSocket surface (spec section 88, docs/system-flow.md section 3).
 
 Drives the real FastAPI app through Starlette's TestClient (lifespan on, so the
-simulation loop thread is live). Endpoints that are deliberately absent until a later
-slice (training, experiments, models, replay) are asserted to 404 rather than stubbed.
+simulation loop thread is live). Endpoints still deferred to a later slice (experiments,
+replay) are asserted to 404 rather than stubbed (spec §98).
 """
 
 from __future__ import annotations
+
+import time
 
 import pytest
 from fastapi.testclient import TestClient
@@ -213,10 +215,33 @@ def test_metrics_and_events(client):
 
 
 def test_deferred_endpoints_are_absent_not_stubbed(client):
-    # spec section 98: unimplemented features must not be faked
-    for path in ("/api/v1/training", "/api/v1/experiments", "/api/v1/models",
-                 "/api/v1/replay"):
+    # spec section 98: still-unimplemented features must not be faked
+    for path in ("/api/v1/experiments", "/api/v1/replay"):
         assert client.get(path).status_code == 404
+
+
+def test_training_status_endpoint(client):
+    body = client.get("/api/v1/training").json()
+    assert "seq" in body and "running" in body
+    assert "job" in body            # None until a run starts - not fabricated
+    assert isinstance(body["history"], list)
+
+
+def test_training_run_detail_unknown_is_404(client):
+    assert client.get("/api/v1/training/runs/nope-20200101T000000Z").status_code == 404
+
+
+def test_training_start_validates_input(client):
+    assert client.post("/api/v1/training/runs",
+                       json={"agent": "sarsa", "episodes": 1}).status_code == 404
+    assert client.post("/api/v1/training/runs",
+                       json={"agent": "a2c", "episodes": 0}).status_code == 422
+
+
+def test_models_registry_endpoint(client):
+    body = client.get("/api/v1/models").json()
+    assert isinstance(body["models"], list)   # empty on a fresh temp DB, never faked
+    assert client.get("/api/v1/models/does-not-exist").status_code == 404
 
 
 # --------------------------------------------------------------- websocket
@@ -240,3 +265,33 @@ def test_websocket_ping_pong(client):
                 break
         else:
             pytest.fail("no pong received")
+
+
+def test_websocket_streams_training_update(client):
+    """A real (short) training job's progress reaches the WS as `training_update`."""
+    from app.training.service import _reset_training_service_for_tests, get_training_service
+
+    _reset_training_service_for_tests()
+    svc = get_training_service()
+    svc.start(agent="a2c", episodes=2, scenario="emergency_heavy", seed=3,
+              episode_seconds=90.0)
+    try:
+        with client.websocket_connect("/ws") as ws:
+            assert ws.receive_json()["type"] == "hello"
+            seen = None
+            for _ in range(400):
+                frame = ws.receive_json()
+                if frame["type"] == "training_update":
+                    seen = frame["payload"]
+                    if seen["job"]["phase"] in ("completed", "failed"):
+                        break
+            assert seen is not None, "no training_update frame received"
+            assert seen["job"]["agent"] == "a2c"
+            assert seen["job"]["phase"] in ("running", "completed")
+    finally:
+        # make sure the worker thread is done before the next test
+        for _ in range(240):
+            if not svc.is_running:
+                break
+            time.sleep(0.5)
+        _reset_training_service_for_tests()

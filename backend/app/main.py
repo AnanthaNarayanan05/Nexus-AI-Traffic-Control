@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import api_router, ws_router
+from app.api import api_router, training_router, ws_router
 from app.core.config import get_config, get_settings
 from app.core.simulation_manager import get_manager
 from app.logging import configure, get_logger
@@ -29,6 +29,10 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     configure(settings.log_level)
     cfg = get_config()
+
+    from app.persistence import init_db
+    init_db()  # ensure the model-registry table exists
+
     manager = get_manager()
     manager.start_thread()
     log.info("NEXUS backend ready", adapter=manager.adapter.name,
@@ -59,6 +63,7 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
     app.include_router(api_router)
+    app.include_router(training_router)
     app.include_router(ws_router)
 
     @app.get("/")

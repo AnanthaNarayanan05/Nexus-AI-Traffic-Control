@@ -17,6 +17,7 @@ from app.api.serialize import agent_update_payload, compact_state
 from app.core.config import get_config
 from app.core.simulation_manager import get_manager
 from app.logging import get_logger
+from app.training.service import get_training_service
 
 log = get_logger("API")
 ws_router = APIRouter()
@@ -38,6 +39,7 @@ class _Client:
         self.event_cursor = 0
         self.last_decision_id: str | None = None
         self.last_signal: str | None = None
+        self.last_training_seq = -1
         self.closed = False
 
     def wants(self, channel: str) -> bool:
@@ -69,7 +71,7 @@ async def websocket_endpoint(ws: WebSocket) -> None:
         "status": mgr.status(),
         "channels": ["simulation_state", "signal_update", "agent_update",
                      "coordination_update", "metric_update", "event", "status",
-                     "command_result"],
+                     "command_result", "training_update"],
         "stream_hz": cfg.simulation.stream_hz,
         "server_time": time.time(),
     })
@@ -114,6 +116,15 @@ async def websocket_endpoint(ws: WebSocket) -> None:
                     for ev in mgr.events_since(client.event_cursor):
                         await client.send("event", ev.t, ev.model_dump(mode="json"))
                     client.event_cursor = cursor
+
+            # training progress: published by the training thread, polled here (spec §64-79)
+            train = get_training_service()
+            if train.seq != client.last_training_seq:
+                client.last_training_seq = train.seq
+                snap = train.snapshot()
+                if snap["job"] is not None:
+                    await client.send("training_update",
+                                      state.sim_time if state is not None else 0.0, snap)
 
             await asyncio.sleep(interval)
     except (WebSocketDisconnect, RuntimeError, ConnectionError):

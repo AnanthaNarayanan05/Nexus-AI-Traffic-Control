@@ -40,3 +40,11 @@ class LoadScenarioRequest(BaseModel):
     id: str | None = None
     config: ScenarioConfig | None = None
     seed: int | None = None
+
+
+class StartTrainingRequest(BaseModel):
+    agent: str = Field(description="a2c | dqn | ppo")
+    episodes: int = Field(ge=1, le=1000)
+    scenario: str | None = Field(default=None, description="preset id; default = agent's own stress scenario")
+    seed: int | None = None
+    checkpoint_every: int = Field(default=25, ge=1, le=1000)
