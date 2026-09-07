@@ -1,0 +1,34 @@
+# ============================================================================
+# NEXUS AI TRAFFIC CONTROL - optional container setup (spec section 95).
+# Local development does NOT require Docker; use `make dev` instead.
+# ============================================================================
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    environment:
+      NEXUS_HOST: 0.0.0.0
+      NEXUS_PORT: "8000"
+      NEXUS_SIM_ADAPTER: builtin
+      NEXUS_DB_URL: sqlite:////data/nexus.db
+    volumes:
+      - ./models:/app/models
+      - nexus-data:/data
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+      VITE_WS_URL: ws://localhost:8000/ws
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  nexus-data:

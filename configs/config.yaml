@@ -1,0 +1,169 @@
+# ============================================================================
+# NEXUS AI TRAFFIC CONTROL - central runtime configuration
+# ----------------------------------------------------------------------------
+# Every tunable number in the system lives here (spec section 92: "Do not
+# scatter magic numbers through code"). Loaded once at startup by
+# backend/app/core/config.py and exposed as a typed settings object.
+#
+# Values that come directly from the academic source (the PPT) are marked
+# [PPT]. Values chosen by engineering judgement are marked [ASSUMPTION] and
+# also recorded in docs/assumptions.md.
+# ============================================================================
+
+simulation:
+  adapter: builtin            # builtin | sumo
+  step_length_s: 0.5          # [ASSUMPTION] physics tick of the microsimulation
+  decision_interval_s: 6.0    # [PPT] "one decision every 5-10 s of simulation time"
+  episode_length_s: 3600      # [PPT] "each episode equals one hour of simulated traffic"
+  stream_hz: 20               # [ASSUMPTION] state snapshots pushed to the UI per real second
+  seed: 42
+  max_vehicles: 400           # safety cap to bound memory / CPU
+
+geometry:
+  # Single 4-way intersection. Distances in metres.
+  approach_length_m: 220.0
+  lanes_per_approach: 3        # lane 0 = left turn, lane 1 = through, lane 2 = through+right
+  lane_width_m: 3.4            # also drives the frontend renderer via GET /api/v1/config
+  intersection_size_m: 24.0
+  stop_line_offset_m: 2.0
+  free_flow_speed_kmh: 50.0
+  vehicle_length_m: 5.0
+  min_gap_m: 2.5
+
+signals:
+  # Phase timing constraints enforced by the safety layer (spec section 12, 22).
+  min_green_s: 8.0            # [ASSUMPTION] realistic urban minimum
+  max_green_s: 60.0           # [ASSUMPTION]
+  yellow_s: 3.0               # [ASSUMPTION] standard
+  all_red_s: 2.0              # [ASSUMPTION] clearance interval
+  emergency_max_priority_s: 45.0   # bounded priority window (spec section 8, PPT slide 8)
+  phases:
+    # Ring of "serviceable" green phases. Emergency single-approach phases
+    # (N/E/S/W) are reachable only when an emergency is active.
+    - id: NS
+      description: North + South approaches proceed
+      movements: [N_through, N_right, N_left, S_through, S_right, S_left]
+    - id: EW
+      description: East + West approaches proceed
+      movements: [E_through, E_right, E_left, W_through, W_right, W_left]
+    - id: N
+      description: North approach only (emergency priority)
+      movements: [N_through, N_right, N_left]
+      emergency_only: true
+    - id: E
+      description: East approach only (emergency priority)
+      movements: [E_through, E_right, E_left]
+      emergency_only: true
+    - id: S
+      description: South approach only (emergency priority)
+      movements: [S_through, S_right, S_left]
+      emergency_only: true
+    - id: W
+      description: West approach only (emergency priority)
+      movements: [W_through, W_right, W_left]
+      emergency_only: true
+
+fixed_time:
+  # Baseline controller (spec section 49, PPT slide 21).
+  schedule:
+    - {phase: NS, green_s: 30.0}
+    - {phase: EW, green_s: 30.0}
+
+demand:
+  # Fractions are relative weights, normalised at runtime.
+  default_arrivals_vph: 1600     # total vehicles/hour across all approaches
+  turn_split: {left: 0.2, through: 0.6, right: 0.2}
+  emergency_vehicle_types: [ambulance, fire_truck, police]
+  profiles:
+    normal:      {N: 0.20, E: 0.25, S: 0.30, W: 0.25}
+    rush_hour:   {N: 0.50, E: 0.15, S: 0.25, W: 0.10, arrivals_vph: 2600}
+    uneven:      {N: 0.45, E: 0.30, S: 0.15, W: 0.10}
+    high_stop_go: {N: 0.28, E: 0.24, S: 0.26, W: 0.22, arrivals_vph: 2200}
+
+rl:
+  gamma: 0.99
+  gae_lambda: 0.95
+  learning_rate: 3.0e-4
+  batch_size: 64
+  hidden_dim: 128
+  training_episodes: 200
+  device: cpu
+  a2c:
+    n_steps: 20              # on-policy rollout length before an update
+    value_coef: 0.5
+    entropy_coef: 0.01
+    max_grad_norm: 0.5
+  dqn:
+    replay_capacity: 100000
+    learning_starts: 1000
+    target_update_interval: 1000
+    train_freq: 4
+    epsilon_start: 1.0
+    epsilon_end: 0.05
+    epsilon_decay_steps: 40000
+  ppo:
+    rollout_steps: 512
+    epochs: 4
+    minibatch_size: 64
+    clip_range: 0.2
+    value_coef: 0.5
+    entropy_coef: 0.01
+    max_grad_norm: 0.5
+
+reward:
+  # Weights are per-agent (PPT slide 20: "three reward functions, one behind
+  # each algorithm - rather than one shared equation").
+  a2c:   # R = -alpha*We - beta*Q + gamma*Pe + delta*T
+    alpha_emergency_wait: 1.0
+    beta_normal_queue: 0.15
+    gamma_emergency_passage: 2.0
+    delta_throughput: 0.3
+    switch_penalty: 0.2        # [ASSUMPTION] discourages signal flapping
+  dqn:   # smoothness reward - violation penalty
+    smooth_flow: 0.4
+    waiting_drop: 0.5
+    stop_penalty: 0.25
+    idle_penalty: 0.15
+    emission_penalty: 0.6
+    queue_penalty: 0.1
+    violation_penalty: 3.0
+    switch_penalty: 0.1
+  ppo:   # R = -alpha*Q - beta*W + gamma*T
+    alpha_queue: 0.25
+    beta_waiting: 0.4
+    gamma_throughput: 0.5
+    switch_penalty: 0.15
+
+coordination:
+  # Priority ladder (spec section 21). Higher = considered first.
+  priority_order: [safety, emergency, valid_phase, congestion, efficiency, throughput, stability]
+  emergency_override_threshold: 0.55   # A2C priority above which emergency wins outright
+  consensus_bonus: 0.1                  # score boost per extra agent agreeing on a phase
+  stability_penalty: 0.12              # [ASSUMPTION] score penalty for leaving the served phase
+  throughput_bonus: 0.15              # [ASSUMPTION] score bonus for the phase serving most vehicles
+
+fuel:
+  # Transparent estimate (spec section 25). Litres.
+  idle_l_per_s: 0.00028
+  per_stop_l: 0.0085
+  cruise_l_per_m: 0.000075
+  accel_l_per_ms2_s: 0.0011
+  type_multiplier: {car: 1.0, suv: 1.35, bus: 2.6, truck: 3.1, ambulance: 1.8, fire_truck: 3.0, police: 1.4}
+
+emissions:
+  # Estimated CO2 (spec section 26). kg CO2 per litre of fuel burned.
+  co2_kg_per_litre: 2.31
+  cold_start_penalty_kg: 0.02
+
+violations:
+  base_red_run_probability: 0.010   # per vehicle arriving on red, per decision window
+  unsafe_cross_probability: 0.004
+
+render:
+  target_fps: 60
+  quality: high              # high | medium | low
+  interpolation: true
+
+experiments:
+  default_episodes: 20
+  confidence_level: 0.95

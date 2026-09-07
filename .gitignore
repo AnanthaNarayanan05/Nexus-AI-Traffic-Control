@@ -1,0 +1,48 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# ---- Node / frontend ----
+node_modules/
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+*.local
+
+# ---- Data / models / artifacts ----
+data/experiments/*
+data/replays/*
+data/exports/*
+!data/**/.gitkeep
+models/*.pt
+models/*.zip
+*.db
+*.sqlite3
+!database/.gitkeep
+
+# ---- Env / secrets ----
+.env
+.env.*
+!.env.example
+
+# ---- Editor / OS ----
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- SUMO generated ----
+simulation/**/*.out.xml
+simulation/**/tripinfo*.xml
