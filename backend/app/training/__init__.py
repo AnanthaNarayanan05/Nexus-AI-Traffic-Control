@@ -7,6 +7,14 @@ real episode and a real gradient step (spec section 84).
 """
 
 from app.training.environment import EpisodeResult, TrainingEnv
+from app.training.evaluation import (
+    EvalEpisode,
+    EvalResult,
+    compare,
+    evaluate,
+    improvement_pct,
+    write_report,
+)
 from app.training.manager import (
     AGENT_CLASSES,
     DEFAULT_SCENARIO,
@@ -23,4 +31,10 @@ __all__ = [
     "build_agent",
     "AGENT_CLASSES",
     "DEFAULT_SCENARIO",
+    "EvalEpisode",
+    "EvalResult",
+    "evaluate",
+    "compare",
+    "improvement_pct",
+    "write_report",
 ]

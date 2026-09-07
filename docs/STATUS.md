@@ -8,7 +8,7 @@ Legend: ✅ working end-to-end · 🟡 partial / scaffolded · ⬜ not started
 
 Verified end-to-end 2026-09-07: built-in sim → FastAPI → WebSocket → PixiJS render →
 A2C/DQN/PPO decision loop → coordination → safety → applied phase → measured metrics,
-all in the browser. `pytest tests/` (139, incl. Slice 2) + `vitest` (29) green;
+all in the browser. `pytest tests/` (147, incl. Slice 2) + `vitest` (29) green;
 `npm run build` + `eslint` + `tsc -b` clean.
 
 | Area | State | Notes |
@@ -35,7 +35,7 @@ all in the browser. `pytest tests/` (139, incl. Slice 2) + `vitest` (29) green;
 | Coordination bar | ✅ | 3 recs → winner + basis → safety verdict + ladder trace + score breakdown |
 | Metrics row + event timeline | ✅ | filterable TRAFFIC/AI/EMERGENCY/SAFETY/VIOLATION/SYSTEM; server errors surfaced verbatim |
 | Agent inspector REST polling | ✅ | `GET /agents/{name}` on a 2 s poll; not streamed (cost) |
-| Tests (reward, state builders, agents, coordination, safety, sim determinism, API) | ✅ | `pytest tests/` → 139 pass (agents 64, coordination 14, safety 17, simulation 10, integration/API+WS 22, training 12); `vitest` → 29 pass (format, store wiring, scene geometry) |
+| Tests (reward, state builders, agents, coordination, safety, sim determinism, API, training, evaluation) | ✅ | `pytest tests/` → 147 pass (agents 64, coordination 14, safety 17, simulation 10, integration/API+WS 22, training 12, evaluation 8); `vitest` → 29 pass |
 
 ## Slice 2 — training loops  *(in progress)*
 
@@ -48,9 +48,11 @@ Headless single-agent RL: real episodes → real reward → real gradient steps 
 | `TrainingEnv` — headless single-agent episode driver | ✅ | same pipeline as the live loop for one agent; safety authoritative (§113); terminal transition realised with `done=True` |
 | `TrainingManager` — N-episode run, checkpoints, run metrics | ✅ | `models/<agent>/` checkpoints + `latest.pt` + `<run_id>.json` (returns/losses/override counts/episode metrics + reproducibility blob) |
 | `scripts/training/train.py` CLI (`make train`) | ✅ | `--agent --episodes --scenario --seed --checkpoint-every --episode-seconds`; per-episode progress line |
-| A2C training | ✅ | n-step updates from episode 1 |
-| DQN training | ✅ | replay fills (~2 episodes) then target-net updates every `train_freq` |
-| PPO training | 🟡 | GAE/clip update runs, but ~1/episode at the 600-decision cadence — rollout length wants tuning |
+| Evaluation harness (`evaluation.py`, `scripts/training/evaluate.py`) | ✅ | deterministic policy, safety authoritative; fixed-time vs untrained vs trained over held-out seeds; mean ± 95% CI + improvement %; JSON report |
+| A2C training | ✅ | n-step updates from episode 1. **Run `a2c-20260907T155926Z`, `emergency_heavy`, 200 episodes, 509 s.** Return +422 (ep 1–25) → +475 (ep 151–175); entropy 1.61 → 0.31. `models/a2c/latest.pt` = `a2c-v1.4-dev`. |
+| A2C evaluated (8 held-out seeds) | ✅ | vs fixed-time: emergency delay **+28.8%**, emergency wait **+52.2%**, avg waiting **+61.1%**, speed +33.9%; throughput −7.7% (noisy). Trained ≫ untrained (untrained is catastrophic). Caveat: 147 safety overrides/ep — policy leans on the safety layer. Full table in [`training.md`](training.md). |
+| DQN training | ✅ | replay fills (~2 episodes) then target-net updates every `train_freq`. **No full run yet** (6-episode smoke only). |
+| PPO training | 🟡 | GAE/clip update runs, but ~1/episode at the 600-decision cadence — rollout length wants tuning. No full run yet. |
 | SQLite model registry + versioning | ⬜ | next sub-slice; `latest.pt` on disk is the record of truth for now |
 | `GET /api/v1/training` + WS progress stream | ⬜ | still 404 (§98); `test_deferred_endpoints_are_absent_not_stubbed` still valid |
 | Training Lab UI (`/training`) + trained-vs-fixed comparison | ⬜ | next sub-slice |

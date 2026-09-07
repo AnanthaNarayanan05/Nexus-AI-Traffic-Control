@@ -97,8 +97,58 @@ Checkpoint payload (per agent `save()`): `state_dict`, `trained_episodes`,
   `rl.ppo.rollout_steps` (512); roughly one update per episode at the 600-decision
   cadence. Tuning the rollout length for more frequent updates is a follow-up.
 
+## Evaluation
+
+`app/training/evaluation.py` + `python -m scripts.training.evaluate`. Runs three
+controllers over the **same held-out seeds** — fixed-time, the agent's untrained
+(random-init) network, and a trained checkpoint — with the policy deterministic
+(`training=False` ⇒ argmax for A2C/PPO, greedy for DQN). Safety stays authoritative.
+Aggregates every episode `MetricSnapshot` with mean / median / std / min / max / 95 % CI
+half-width (`summarise_series`, Student-t for n < 30) and reports signed improvement %
+vs fixed-time (sign follows whether lower or higher is better for each metric). Writes
+`models/<agent>/eval-<ts>.json`.
+
+```bash
+python -m scripts.training.evaluate --agent a2c --scenario emergency_heavy \
+    --seeds 1,2,3,4,5,6,7,8 --checkpoint models/a2c/latest.pt
+```
+
+### A2C — `a2c-v1.4-dev`, `emergency_heavy`, seeds 1–8 (held out from training seeds 42–241)
+
+| Metric | fixed-time | untrained A2C | **trained A2C** | trained vs fixed |
+|---|--:|--:|--:|--:|
+| emergency delay (s) | 18.19 | 44.40 | **12.95** | **+28.8 %** |
+| emergency wait (s) | 7.82 | 29.85 | **3.73** | **+52.2 %** |
+| emergency travel time (s) | 46.61 | 72.82 | **41.38** | +11.2 % |
+| emergencies cleared | 175.8 | 174.1 | 175.9 | +0.1 % |
+| avg vehicle waiting (s) | 4.68 | 37.84 | **1.82** | **+61.1 %** |
+| avg queue (veh) | 1.13 | 5.69 | **0.72** | +36.1 % |
+| avg speed (m/s) | 7.46 | 4.79 | **9.99** | +33.9 % |
+| stops / veh | 0.45 | 0.60 | 0.39 | +13.6 % |
+| fuel / veh (est.) | 0.103 | 0.119 | 0.100 | +2.6 % |
+| CO₂ / veh (est.) | 0.257 | 0.295 | 0.251 | +2.4 % |
+| throughput (vph) | 1957 | 1860 | 1807 | −7.7 % |
+| safety overrides / episode | 0.0 | 70.4 | **147.2** | — |
+
+n = 8; CIs are wide (e.g. avg-waiting ±0.8–1.5 s) — **indicative, not a significance
+claim**. Full per-metric CIs in the JSON report.
+
+**Reading it honestly:**
+- Training worked. The untrained random-init network is *catastrophic* (emergency wait
+  30 s, avg waiting 38 s); the trained policy beats **both** it and fixed-time on its own
+  objective and on most secondary metrics.
+- The one real cost is **throughput −7.7 %** (CIs overlap, so weak) and a small rise in
+  `other_violations` (0.5 → 1.0 events/episode, tiny absolute).
+- **The trained policy leans on the safety layer:** 147 overrides/episode vs fixed-time's
+  0. It proposes aggressive switches to emergency phases and the safety rules (min/max
+  green, emergency timeout) bound them every interval. This is spec-compliant (§113 —
+  safety is authoritative and doing its job) but it means "learned A2C behaviour" is
+  partly "propose aggressively, get bounded". Worth watching in the coordinated-AI
+  comparison and a candidate for a future shaping-penalty review.
+
 ## Not yet (next sub-slice)
 
+- meaningful full DQN + tuned PPO runs, each evaluated the same way
 - SQLite model registry (`models` table, `docs/experiments.md §5`) and versioning
 - `GET /api/v1/training` + `TrainingManager` progress streamed over WS
 - Training Lab UI (`/training` route) and trained-vs-fixed-time comparison

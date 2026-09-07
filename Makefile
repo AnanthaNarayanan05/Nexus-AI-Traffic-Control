@@ -52,6 +52,10 @@ test-frontend: ## Run frontend vitest suite
 train: ## Train an agent: make train AGENT=a2c EPISODES=200
 	$(BIN)/python -m scripts.training.train --agent $(AGENT) --episodes $(EPISODES)
 
+.PHONY: evaluate
+evaluate: ## Evaluate a checkpoint vs fixed-time + untrained: make evaluate AGENT=a2c SCENARIO=emergency_heavy
+	$(BIN)/python -m scripts.training.evaluate --agent $(AGENT) --scenario $(SCENARIO)
+
 .PHONY: experiment
 experiment: ## Run an experiment batch from a config file: make experiment CONFIG=...
 	$(BIN)/python -m scripts.experiments.run --config $(CONFIG)
