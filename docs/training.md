@@ -151,9 +151,49 @@ claim**. Full per-metric CIs in the JSON report.
   partly "propose aggressively, get bounded". Worth watching in the coordinated-AI
   comparison and a candidate for a future shaping-penalty review.
 
+### DQN — `dqn-v1.4-dev`, `high_stop_go`, seeds 1–8 (held out from training seeds 42–241)
+
+Run `dqn-20260907T165632Z`: 200 episodes, 773 s. ε reaches its 0.05 floor by ~episode 67;
+~151 gradient steps/episode. Episode return is roughly flat (−492 first-5 → −475 last-5);
+mean Q keeps drifting negative through training (−18 → −45) — the value function has **not
+fully converged** at 200 episodes, though the resulting greedy policy is already useful.
+
+| Metric | fixed-time | untrained DQN | **trained DQN** | trained vs fixed |
+|---|--:|--:|--:|--:|
+| avg vehicle waiting (s) | 5.27 | 14.17 | **1.96** | **+62.9 %** |
+| avg queue (veh) | 2.03 | 4.78 | **1.00** | **+50.8 %** |
+| idle time (s) | 7.77 | 20.43 | **3.71** | **+52.3 %** |
+| avg speed (m/s) | 6.74 | 5.93 | **9.68** | +43.6 % |
+| stops / veh | 0.47 | 0.53 | 0.41 | +12.4 % |
+| travel time (s) | 52.11 | 66.29 | 47.27 | +9.3 % |
+| **fuel / veh (est.)** | 0.103 | 0.110 | **0.101** | **+2.6 %** |
+| **CO₂ / veh (est.)** | 0.259 | 0.275 | **0.253** | **+2.4 %** |
+| emergency wait (s) | 6.29 | 24.43 | 4.26 | +32.3 % |
+| throughput (vph) | 2558 | 2273 | 2333 | −8.8 % |
+| red-light violations / ep | 7.0 | 4.0 | **9.5** | **−35.7 %** |
+| other violations / ep | 1.25 | 1.13 | 2.13 | −70 % |
+| safety overrides / episode | 0.0 | 41.6 | **27.4** | — |
+
+n = 8, wide CIs — indicative only. Report: `models/dqn/eval-20260907T171040Z.json`.
+
+**Reading it honestly:**
+- Learning is real: the greedy policy is nothing like the untrained network (which is
+  catastrophic — avg waiting 14 s, 41 safety overrides/ep), Q-values evolved over training,
+  and behaviour clearly differs from random.
+- It **beats fixed-time on its own objective** — fuel −2.6 %, CO₂ −2.4 % per vehicle — and
+  substantially on congestion/idle/speed, which feed those numbers.
+- **The cost is safety.** Trained DQN runs *more* red-light violations than fixed-time
+  (9.5 vs 7.0/ep) and its proposals are overridden ~27×/episode. The DQN reward already
+  carries a violation penalty; the policy still trades some of it for flow. Same pattern as
+  A2C ("propose aggressively, safety bounds it"). Candidate for a reward-shaping /
+  penalty-weight review, and the throughput dip (−8.8 %, CIs overlap) wants a longer run.
+- mean-Q drift says the run was **stopped before convergence**; a longer schedule (or a
+  lower LR / larger target-update interval) is the obvious next experiment.
+
 ## Not yet (next sub-slice)
 
-- meaningful full DQN + tuned PPO runs, each evaluated the same way
+- tuned PPO full run, evaluated the same way (config tuned + smoke-verified; run pending)
+- DQN convergence follow-up (longer schedule) + reward-penalty review for A2C/DQN
 - SQLite model registry (`models` table, `docs/experiments.md §5`) and versioning
 - `GET /api/v1/training` + `TrainingManager` progress streamed over WS
 - Training Lab UI (`/training` route) and trained-vs-fixed-time comparison
