@@ -4,14 +4,29 @@
  * Lab), so a `location.hash` lookup with a subscription is enough.
  *
  * Routes are the bare hash without the `#`: '' (dashboard), 'training', 'experiments',
- * 'scenarios', 'replay', 'inspect'.
+ * 'scenarios', 'replay', 'inspect', 'present' (full-screen demo mode).
  */
 
 import { useCallback, useSyncExternalStore } from 'react';
 
-export type Route = '' | 'training' | 'experiments' | 'scenarios' | 'replay' | 'inspect';
+export type Route =
+  | ''
+  | 'training'
+  | 'experiments'
+  | 'scenarios'
+  | 'replay'
+  | 'inspect'
+  | 'present';
 
-const ROUTES: Route[] = ['', 'training', 'experiments', 'scenarios', 'replay', 'inspect'];
+const ROUTES: Route[] = [
+  '',
+  'training',
+  'experiments',
+  'scenarios',
+  'replay',
+  'inspect',
+  'present',
+];
 
 function parse(hash: string): Route {
   const clean = hash.replace(/^#\/?/, '').split(/[?/]/)[0] as Route;

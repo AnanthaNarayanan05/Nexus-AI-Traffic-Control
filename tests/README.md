@@ -63,7 +63,12 @@ posts the draft, the preview describes the draft in plain English — API client
 badge, newest replay auto-opens and shows the coordinator → authoritative-safety pipeline,
 the transport steps through decisions, "Capture current run" hits the endpoint and shows
 the result with a friendly message on 409, "vehicle-level playback is not captured" stated,
-CSV / JSON export links point at `/export/replays/{id}` (R9 P4) — API client stubbed), `src/inspectors/InspectorLab.test.tsx` (the `#/inspect` view, R9 P3
+CSV / JSON export links point at `/export/replays/{id}` (R9 P4) — API client stubbed),
+`src/present/PresentationMode.test.tsx` (the `#/present` view, R9 P4 §60–63: the three
+flagship demos are listed; launching one fires the real command sequence — `set_mode` AI →
+`load_scenario` at the pinned seed 42 → `start`; the "what to watch" brief appears; the
+number keys launch and `Esc` exits; the launchers are disabled while the backend is offline
+— socket + child panels stubbed), `src/inspectors/InspectorLab.test.tsx` (the `#/inspect` view, R9 P3
 §19: the Coordination brain shows the coordinator → authoritative-safety pipeline + priority
 ladder + phase scores + per-agent recommendations + safety verdict, warns when safety
 rewrote the choice, empty state outside AI mode; the Signal tab renders the phase SM +

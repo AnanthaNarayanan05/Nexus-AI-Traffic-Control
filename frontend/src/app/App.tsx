@@ -12,6 +12,7 @@ import { ExperimentLab } from '../experiments/ExperimentLab';
 import { InspectorLab } from '../inspectors/InspectorLab';
 import { api } from '../lib/api';
 import { useHashRoute } from '../lib/hashRoute';
+import { PresentationMode } from '../present/PresentationMode';
 import { ReplayLab } from '../replay/ReplayLab';
 import { ScenarioLab } from '../scenarios/ScenarioLab';
 import { useSimStore } from '../store';
@@ -60,6 +61,11 @@ export function App() {
     };
   }, [setScenarios]);
 
+  // Presentation mode is a full-screen takeover: no command bar, no view tabs (§60-63).
+  if (route === 'present') {
+    return <PresentationMode />;
+  }
+
   return (
     <div className="app">
       <CommandBar />
@@ -89,6 +95,8 @@ export function App() {
         <button className={route === 'inspect' ? 'active' : ''} onClick={() => go('inspect')}>
           Inspectors
         </button>
+        {/* Presentation mode replaces this whole chrome, so this tab is never "active" here. */}
+        <button onClick={() => go('present')}>Presentation</button>
       </nav>
 
       {route === 'training' ? (

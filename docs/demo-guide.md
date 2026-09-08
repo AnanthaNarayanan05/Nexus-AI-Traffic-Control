@@ -1,48 +1,67 @@
 # Demo guide
 
-Spec §60–63, §108. Presentation mode is deterministic under a fixed seed.
+MASTER_PROMPT §24, §60–63, §108. Presentation mode is a reduced-chrome shell around the
+live loop, built for projecting on a room-sized screen. Every flagship demo is pinned to a
+fixed seed, so a run on stage is bit-for-bit the run you rehearsed.
 
 ## Launch
 
 ```bash
 make dev            # backend :8000 + frontend :5173
-# open http://127.0.0.1:5173  → press  P  (or open /#/present)
+# open http://localhost:5173  →  click the "Presentation" tab  (or open /#/present)
 ```
 
-Presentation mode: minimal nav, enlarged panels, a scripted scenario sequence, seed pinned to
-`configs/config.yaml → simulation.seed`.
+Presentation mode replaces the command bar and the view tabs with:
 
-## Default demo script (§108)
+- a slim header — NEXUS brand, the active demo name, a LIVE / PAUSED badge, the pinned
+  seed, and one **✕ Exit presentation** control (or press `Esc`);
+- the intersection stage, the coordinator → authoritative-safety pipeline, and the
+  measured-metrics row, all enlarged;
+- a rail with the three flagship-demo launchers and, once one is running, its plain-English
+  brief and a "what to watch" list.
 
-| Step | Action | What to point at |
-|---|---|---|
-| 1 | Launch NEXUS, `NORMAL` scenario | the live intersection is the centre of the screen |
-| 2 | Let it settle ~20 s | metrics row stabilises; AI mode active |
-| 3 | Scenario → `UNEVEN DEMAND` | PPO strip: N–S queue pressure climbs |
-| 4 | — | PPO recommendation flips to "EXTEND N–S GREEN"; coordination bar shows PPO winning on `congestion` |
-| 5 | Press **E** (spawn ambulance N) | red alert; A2C panel activates |
-| 6 | — | A2C actor bars shift to `SWITCH_EMERGENCY`; critic value shown |
-| 7 | — | DQN Q-value bars update live |
-| 8 | — | PPO still pushing congestion relief |
-| 9 | Coordination bar | "Emergency priority overrides efficiency preference" — basis `emergency_override` |
-| 10 | Safety bar | `EW → YELLOW → ALL_RED → N` transition validated |
-| 11 | — | signal changes on the canvas; ambulance route highlighted |
-| 12 | — | ambulance crosses; `emergency_delay` metric updates |
-| 13 | — | A2C issues `RESTORE_NORMAL`; adaptive control resumes |
-| 14 | — | recovery — E–W queues drain |
-| 15 | Open `/#/experiments` → run `mixed_crisis` (5 seeds, ai + fixed_time) | progress streams in |
-| 16 | Comparison table | fixed-time vs. NEXUS AI with improvement % and CIs |
+The seed is **42** (`configs/config.yaml → simulation.seed`), shared by all three demos.
 
-## Flagship demos
+## Flagship demos (§60–63)
 
-- **Emergency Response Challenge** — `scenarios/emergency_response.yaml`. A2C end-to-end.
-- **Efficiency Challenge** — `scenarios/efficiency_challenge.yaml`. DQN: stop-and-go → smooth, fuel/CO₂
-  curves fall, a scripted violation is penalised.
-- **Mixed Crisis** — `scenarios/mixed_crisis.yaml`. High N traffic + ambulance on N + moderate E +
-  violation event + uneven demand, exercising all three agents, coordination, and safety at once.
+Each launcher fires three ordinary WebSocket commands — the same channel the command bar
+uses: `set_mode {mode: "AI"}` → `load_scenario {id, seed: 42}` → `start`. Nothing is
+pre-recorded; the agents, the coordinator and the safety layer run exactly as they do on
+the dashboard.
 
-## Reliability checklist (§105) — run before presenting
+| # | Demo | Key | Scenario preset | Owner algorithm | What to point at |
+|---|---|---|---|---|---|
+| 1 | Emergency Response Challenge | `1` | `emergency_heavy` | A2C — emergency prioritization | Emergency wait falls as A2C holds green for the approach; the coordination basis flips to an emergency override; every forced change is still bounded by the safety layer. |
+| 2 | Efficiency Challenge | `2` | `high_stop_go` | DQN — fuel / CO₂ / stops | Stops per vehicle trend down; fuel and CO₂ per vehicle (both `ESTIMATED`) settle lower; average speed rises without the queue blowing up. |
+| 3 | Mixed Crisis | `3` | `mixed_crisis` | Full AI — coordination + safety | Both agents produce a recommendation every cycle; the coordinator picks a winner and the safety layer has the final say; no unsafe transitions even under load. |
 
-`scripts/validation/demo_check.py` runs each flagship scenario headless 3× and asserts: no crash, no
-vehicle stuck > 180 s, no signal stuck > `max_green + transition`, WS stays connected, all three agents
-produce recommendations every cycle, metrics advance, and no value in the stream is flagged `mock`.
+`Restart this demo` reloads the current scenario at the pinned seed and starts it again.
+
+## Suggested narration (Mixed Crisis)
+
+1. Launch demo 3. The stage fills with heavy N–S demand; the metrics row starts from zero.
+2. An ambulance appears — the stage banner shows its approach and ETA.
+3. In the coordination panel, A2C's recommendation and DQN's recommendation are shown
+   side by side, then the coordinator's pick, then what the safety layer actually applied.
+4. When safety rewrites or blocks a change, the amber banner says so — "no agent
+   recommendation can bypass this layer".
+5. Watch **Unsafe transitions** stay at 0 in the metrics row while everything else moves.
+6. For the numbers-vs-fixed-time story, exit and open `/#/experiments` — run `mixed_crisis`
+   with `ai` + `fixed_time` over several seeds and read the comparison table (improvement %
+   with confidence intervals). That is a measured experiment, not a demo effect.
+
+## Honesty notes (§84, §114)
+
+- The metrics row is the live `MetricSnapshot` — nothing is smoothed or compared against a
+  baseline in the browser.
+- Fuel and CO₂ are parametric estimates and are labelled `ESTIMATED` (see
+  [`assumptions.md`](assumptions.md) A12–A13).
+- Presentation mode never disables or hides the safety layer; it only reduces navigation
+  chrome.
+
+## Not built
+
+- A scripted multi-step auto-advancing tour (the demos are launched by hand).
+- A headless `demo_check` reliability harness. The equivalent coverage today:
+  `tests/scenarios/test_presets.py` builds every preset, and `tests/training/` runs the
+  scenarios headless for determinism and safety-consultation checks.
