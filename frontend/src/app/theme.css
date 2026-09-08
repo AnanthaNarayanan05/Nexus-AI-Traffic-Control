@@ -101,9 +101,14 @@ button {
 
 .centre-column {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) auto auto;
+  /* The stage takes the slack, but never gives up more than down to 200px — on a
+     short viewport (1280x720 and friends) the pipeline + metrics panels below would
+     otherwise squeeze it to a sliver. When that floor makes the column overflow, the
+     column scrolls rather than the whole page. */
+  grid-template-rows: minmax(200px, 1fr) auto auto;
   gap: 8px;
   min-height: 0;
+  overflow: auto;
 }
 
 @media (max-width: 1280px) {
@@ -609,7 +614,7 @@ input[type='range'] {
 /* The dashboard centre column runs out of room for a four-card row long before the
    side columns collapse — stack the pipeline two-up and drop the connectors (the
    panel title already spells out "Coordination -> Safety -> Signal"). Presentation
-   mode keeps the full row until it too gets narrow. */
+   mode keeps the full row until its main grid drops to a single column (1024px). */
 @media (max-width: 1180px) {
   .dashboard .coord-flow {
     grid-template-columns: 1fr 1fr;
@@ -619,7 +624,7 @@ input[type='range'] {
   }
 }
 
-@media (max-width: 720px) {
+@media (max-width: 1024px) {
   .present-stage .coord-flow {
     grid-template-columns: 1fr 1fr;
   }

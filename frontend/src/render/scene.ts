@@ -110,6 +110,11 @@ export class IntersectionScene {
   private nodes = new Map<string, VehicleNode>();
   private signalLamps = new Map<Approach, Graphics>();
   private queueLabels = new Map<Approach, Text>();
+  // Last values actually drawn, so the per-frame ticker can skip the lamp's
+  // clear()+refill (a full geometry rebuild in Pixi v8) and the queue-label
+  // re-raster when nothing has changed. Signals flip a few times a minute.
+  private paintedColor = new Map<Approach, SignalColor>();
+  private paintedQueue = new Map<Approach, number>();
   private frameTick = 0;
 
   private latest: CompactState | null = null;
@@ -117,6 +122,7 @@ export class IntersectionScene {
   private scale = 1;
   private ready = false;
   private destroyed = false;
+  private hostObserver: ResizeObserver | null = null;
 
   async init(host: HTMLElement, geometry?: Partial<SceneGeometry>): Promise<void> {
     this.geo = { ...DEFAULT_GEOMETRY, ...(geometry ?? {}) };
@@ -125,6 +131,8 @@ export class IntersectionScene {
       antialias: true,
       resolution: Math.min(window.devicePixelRatio || 1, 2),
       autoDensity: true,
+      // Covers the window-resize case with Pixi's own logic; the ResizeObserver
+      // below adds the (more common here) layout-only changes it misses.
       resizeTo: host,
     });
     if (this.destroyed) {
@@ -138,15 +146,35 @@ export class IntersectionScene {
 
     this.drawStatic();
     this.buildSignals();
-    this.layout();
     this.ready = true;
 
     this.app.renderer.on('resize', () => this.layout());
     this.app.ticker.add(() => this.animate());
+
+    // Pixi's own `resizeTo` only re-reads the target on a *window* resize; the stage
+    // panel also grows and shrinks from layout changes alone (the dashboard column
+    // reflowing, presentation mode, a short viewport). Track the host directly.
+    this.layout();
+    if (typeof ResizeObserver !== 'undefined') {
+      this.hostObserver = new ResizeObserver(() => this.resizeToHost(host));
+      this.hostObserver.observe(host);
+    }
+  }
+
+  private resizeToHost(host: HTMLElement): void {
+    // The observer can deliver one more notification after teardown has nulled the
+    // renderer (StrictMode remount, HMR, route change mid-frame).
+    if (this.destroyed || !this.ready || !this.app.renderer) return;
+    const w = host.clientWidth;
+    const h = host.clientHeight;
+    if (w > 0 && h > 0) this.app.renderer.resize(w, h);
+    this.layout();
   }
 
   destroy(): void {
     this.destroyed = true;
+    this.hostObserver?.disconnect();
+    this.hostObserver = null;
     if (this.ready) this.app.destroy(true, { children: true });
   }
 
@@ -234,6 +262,8 @@ export class IntersectionScene {
     this.overlayLayer.removeChildren();
     this.signalLamps.clear();
     this.queueLabels.clear();
+    this.paintedColor.clear();
+    this.paintedQueue.clear();
 
     const s = this.geo.stopLineDist;
     const hw = this.roadHalfWidth;
@@ -350,14 +380,20 @@ export class IntersectionScene {
       const lamp = this.signalLamps.get(a);
       if (!lamp) continue;
       const color = colors?.[a] ?? 'RED';
-      const tint = SIGNAL_TINT[color];
-      lamp.clear();
-      lamp.circle(0, 0, 3.4).fill({ color: tint, alpha: 0.16 });
-      lamp.circle(0, 0, 1.9).fill(tint);
+      if (this.paintedColor.get(a) !== color) {
+        const tint = SIGNAL_TINT[color];
+        lamp.clear();
+        lamp.circle(0, 0, 3.4).fill({ color: tint, alpha: 0.16 });
+        lamp.circle(0, 0, 1.9).fill(tint);
+        this.paintedColor.set(a, color);
+      }
 
       const label = this.queueLabels.get(a);
       const ap = state.approaches?.[a];
-      if (label && ap) label.text = `${a} ${ap.queue_length}`;
+      if (label && ap && this.paintedQueue.get(a) !== ap.queue_length) {
+        label.text = `${a} ${ap.queue_length}`;
+        this.paintedQueue.set(a, ap.queue_length);
+      }
     }
   }
 
