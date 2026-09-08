@@ -77,8 +77,9 @@ per-approach authoritative aspect; the Emergency tab shows the active EV + A2C p
 override, empty otherwise; the Vehicle tab polls `GET /simulation/state`, lists + filters
 vehicles (a `role="listbox"` of `role="option"` rows) and opens a per-vehicle detail on
 click or from the keyboard (Space, R9 P6); the DQN tab renders sampled `state → action →
-reward → next state → done` transitions and an empty-buffer state — API client + stores
-stubbed), `src/components/MetricsRow.test.tsx` (the live metrics panel, R9 P5: the figures
+reward → next state → done` transitions and an empty-buffer state; the inspector-view
+buttons carry `aria-pressed` for the active view and every panel title is a real heading
+(R9 P6) — API client + stores stubbed), `src/components/MetricsRow.test.tsx` (the live metrics panel, R9 P5: the figures
 are read straight from the `MetricSnapshot`, an awaiting-first-snapshot badge shows before
 any frame, the trend strip accumulates a polyline across distinct `sim_time` frames, and a
 frame re-published at the same `sim_time` adds no sample — so a single reading stays a

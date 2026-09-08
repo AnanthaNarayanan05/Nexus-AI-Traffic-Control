@@ -32,7 +32,7 @@ export function Panel({
     <section className={flex ? 'panel flex' : 'panel'}>
       <header className="panel-head">
         {accent ? <span className="panel-accent" style={{ background: accent }} /> : null}
-        <span className="panel-title">{title}</span>
+        <h2 className="panel-title">{title}</h2>
         {sub ? <span className="panel-sub">{sub}</span> : null}
         {actions}
       </header>

@@ -132,6 +132,9 @@ export function PresentationMode() {
 
   return (
     <div className="present">
+      <h1 className="sr-only">
+        NEXUS traffic control — presentation{active ? `: demo ${active.n}, ${active.name}` : ''}
+      </h1>
       <header className="present-top">
         <div className="present-brand">
           <span className="brand-name">NEXUS</span>

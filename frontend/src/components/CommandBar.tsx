@@ -70,6 +70,7 @@ export function CommandBar() {
           <button
             key={m}
             className={m === mode ? 'active' : ''}
+            aria-pressed={m === mode}
             disabled={!online || busy}
             onClick={() => send('set_mode', { mode: m })}
           >

@@ -338,6 +338,20 @@ describe('InspectorLab', () => {
     expect(screen.getByText(/coordination reasoning is produced only in AI mode/i)).toBeInTheDocument();
   });
 
+  it('marks the current inspector view on its tab button (aria-pressed) and titles panels as headings', () => {
+    render(<InspectorLab />);
+    const coordTab = screen.getByRole('button', { name: 'Coordination brain' });
+    const signalTab = screen.getByRole('button', { name: 'Signal' });
+    expect(coordTab).toHaveAttribute('aria-pressed', 'true');
+    expect(signalTab).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(signalTab);
+    expect(coordTab).toHaveAttribute('aria-pressed', 'false');
+    expect(signalTab).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.getByRole('heading', { name: 'SIGNAL STATE MACHINE' }),
+    ).toBeInTheDocument();
+  });
+
   it('renders the signal state machine and the authoritative per-approach aspect', () => {
     render(<InspectorLab />);
     fireEvent.click(screen.getByRole('button', { name: 'Signal' }));

@@ -754,18 +754,19 @@ export function InspectorLab() {
         </div>
       </div>
 
-      <nav className="insp-tabs" aria-label="Inspector">
+      <div className="insp-tabs" role="group" aria-label="Inspector view">
         {TABS.map((t) => (
           <button
             key={t.id}
             className={tab === t.id ? 'active' : ''}
+            aria-pressed={tab === t.id}
             type="button"
             onClick={() => setTab(t.id)}
           >
             {t.label}
           </button>
         ))}
-      </nav>
+      </div>
 
       <div className="lab-col">
         {tab === 'coordination' ? <CoordinationBrain /> : null}
