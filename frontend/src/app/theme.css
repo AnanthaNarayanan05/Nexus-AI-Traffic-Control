@@ -531,9 +531,35 @@ input[type='range'] {
 
 .coord-flow {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) auto minmax(0, 1.15fr) auto minmax(0, 1fr);
+  /* Six items: A2C card, DQN card, arrow, coordination card, arrow, safety card.
+     (Before R9 there was a third agent card — the template still carried its column,
+     which pushed the arrows into flex tracks and squeezed the cards into content
+     tracks.) */
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto minmax(0, 1.3fr) auto minmax(0, 1fr);
   align-items: stretch;
   gap: 7px;
+}
+
+/* The dashboard centre column runs out of room for a four-card row long before the
+   side columns collapse — stack the pipeline two-up and drop the connectors (the
+   panel title already spells out "Coordination -> Safety -> Signal"). Presentation
+   mode keeps the full row until it too gets narrow. */
+@media (max-width: 1180px) {
+  .dashboard .coord-flow {
+    grid-template-columns: 1fr 1fr;
+  }
+  .dashboard .coord-flow .coord-arrow {
+    display: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .present-stage .coord-flow {
+    grid-template-columns: 1fr 1fr;
+  }
+  .present-stage .coord-flow .coord-arrow {
+    display: none;
+  }
 }
 
 .coord-card {
