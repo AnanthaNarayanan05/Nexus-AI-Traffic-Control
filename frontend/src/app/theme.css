@@ -2460,6 +2460,27 @@ tr.cmp-row-click,
     border-color 130ms ease;
 }
 
+.filter-chip {
+  transition:
+    background 130ms ease,
+    border-color 130ms ease,
+    color 130ms ease;
+}
+
+/* --- event timeline: a new row rises into place --------------------------- */
+
+/* Keyed by event id, so only the freshly-mounted row animates — the existing
+   rows above it stay put. On first mount the whole backlog sweeps in together,
+   in step with the panel's own entrance. */
+.timeline-row {
+  animation: rise-in 220ms var(--ease-out) both;
+}
+
+/* Infrequent, and worth noticing when it appears. */
+.banner {
+  animation: rise-in 200ms var(--ease-out) both;
+}
+
 /* --- the live pipeline: mark the authoritative step ------------------------- */
 
 .coord-card:last-child {

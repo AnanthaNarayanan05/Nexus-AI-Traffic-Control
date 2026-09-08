@@ -80,4 +80,9 @@ stubbed), `src/components/MetricsRow.test.tsx` (the live metrics panel, R9 P5: t
 are read straight from the `MetricSnapshot`, an awaiting-first-snapshot badge shows before
 any frame, the trend strip accumulates a polyline across distinct `sim_time` frames, and a
 frame re-published at the same `sim_time` adds no sample — so a single reading stays a
-dashed placeholder, never a faked flat line (§84) — socket stubbed).
+dashed placeholder, never a faked flat line (§84) — socket stubbed),
+`src/components/EventTimeline.test.tsx` (the event timeline, R9 P5: events render in
+store order newest-first, a category filter chip hides that category and updates the
+visible/total count, Clear empties the list, a server-side command rejection is shown
+verbatim and dismissed on click, and the empty state distinguishes "nothing yet" from
+"everything filtered out" — socket stubbed).
