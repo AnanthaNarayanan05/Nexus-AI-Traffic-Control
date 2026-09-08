@@ -284,7 +284,13 @@ button {
 .bar-fill {
   height: 100%;
   border-radius: 3px;
-  transition: width 140ms linear;
+  /* Signed bars (Q-values, reward components) move their left edge as well as their
+     width, and can flip green<->red across zero — ease all three so the chart settles
+     rather than snapping. Overridden to near-zero under prefers-reduced-motion. */
+  transition:
+    width 160ms var(--ease-out),
+    margin-left 160ms var(--ease-out),
+    background 160ms ease;
 }
 
 .bar-zero {
@@ -2483,8 +2489,14 @@ tr.cmp-row-click,
 
 /* --- the live pipeline: mark the authoritative step ------------------------- */
 
-.coord-card:last-child {
-  transition: box-shadow 200ms ease;
+/* The winner highlight moves between the A2C and DQN cards, and the safety card's
+   edge flips green<->yellow when it intervenes — ease both so the pipeline reads as
+   one changing thing rather than a set of hard cuts. */
+.coord-card {
+  transition:
+    box-shadow 200ms ease,
+    border-left-color 200ms ease,
+    background 200ms ease;
 }
 
 .coord-flow .coord-card.winner {
@@ -2494,6 +2506,12 @@ tr.cmp-row-click,
 /* A fresh decision id gently announces itself. */
 .panel-head .panel-sub {
   transition: color 200ms ease;
+}
+
+/* A stat that carries a threshold colour (violations -> orange, unsafe -> red) fades
+   into it rather than blinking. */
+.stat-value {
+  transition: color 180ms ease;
 }
 
 /* --- glass over the canvas ------------------------------------------------- */
