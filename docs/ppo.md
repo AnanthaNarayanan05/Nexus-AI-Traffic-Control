@@ -45,9 +45,11 @@ all present.
 ## 4. Network & learning (`backend/app/agents/ppo/`)
 
 - **`PolicyValueNet`** — shared trunk `33 → 128 → 128`, policy head `→ 4`, value head `→ 1`.
-- **Rollout buffer** — `rollout_steps = 512`, GAE(`γ = 0.99`, `λ = 0.95`).
+- **Rollout buffer** — `rollout_steps = 200` (≈3 on-policy updates per 600-decision
+  episode), flushed at episode end; GAE(`γ = 0.99`, `λ = 0.95`).
 - **Clipped objective** — `L^CLIP = E[min(ρₜ·Aₜ, clip(ρₜ, 1−ε, 1+ε)·Aₜ)]`, `ε = 0.2`,
-  `epochs = 4`, `minibatch = 64`, value + entropy coefficients `0.5 / 0.01`, `max_grad_norm = 0.5`.
+  `epochs = 6`, `minibatch = 64`, value + entropy coefficients `0.5 / 0.01`, `max_grad_norm = 0.5`.
+  All from `configs/config.yaml → rl.ppo`.
 - **Tracked**: policy loss, value loss, entropy, KL estimate, clip fraction, reward, mean advantage,
   episode return.
 

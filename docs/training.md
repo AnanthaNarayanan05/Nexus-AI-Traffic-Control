@@ -9,10 +9,10 @@ against a fresh built-in simulation. The coordination engine plays no part in
 training — it is an inference-time concern (PPT slide 20: *"three reward functions,
 one behind each algorithm — rather than one shared equation"*).
 
-> **R9 (2026-09-08):** active training scope is **A2C + DQN only**.
-> `TrainingService.start` rejects `agent="ppo"`. The PPO sections and results below are
-> **legacy** — retained for the record and still reproducible from the CLI, but frozen
-> and not extended. See [`STATUS.md`](STATUS.md).
+> **R10 (2026-09-09):** active training scope is **A2C + DQN + PPO**. PPO
+> (adaptive congestion reduction, owner Delna Liz Denny) is a first-class agent
+> again — trainable here, in `TrainingService`, and from the CLI, on the `uneven`
+> scenario by default. See [`STATUS.md`](STATUS.md).
 
 ## Pipeline (identical to the live loop, minus coordination)
 
@@ -55,7 +55,7 @@ Each agent trains on its own stress preset by default (see
 |---|---|---|
 | A2C | emergency-vehicle prioritisation | `emergency_heavy` |
 | DQN | efficiency / fuel / emissions / safety | `high_stop_go` |
-| PPO *(legacy)* | congestion reduction | `rush_hour` |
+| PPO | adaptive congestion reduction (R = −αQ − βW + γT) | `uneven` |
 
 Override with `--scenario <preset id>`.
 
@@ -70,7 +70,7 @@ traffic. Default `S` is `simulation.seed` (42).
 ```bash
 python -m scripts.training.train --agent a2c --episodes 200
 python -m scripts.training.train --agent dqn --episodes 50 --episode-seconds 900   # quick
-# python -m scripts.training.train --agent ppo ...   # legacy CLI path still works; PPO is out of R9 scope
+python -m scripts.training.train --agent ppo --episodes 200 --scenario uneven --seed 7
 ```
 
 Also `make train AGENT=a2c EPISODES=200`.
@@ -219,51 +219,61 @@ n = 8, wide CIs — indicative only. Report: `models/dqn/eval-20260907T171040Z.j
 - mean-Q drift says the run was **stopped before convergence**; a longer schedule (or a
   lower LR / larger target-update interval) is the obvious next experiment.
 
-### PPO — `ppo-v1.4-dev`, `rush_hour`, seeds 1–8 (held out from training seeds 7–206)  *(⚠️ legacy — R9)*
+### PPO — `ppo-v1.4-dev`, `uneven`, seeds 1–8 (held out from training seed 7)  *(R10 retrain)*
 
-*PPO is out of the R9 active scope. This result is kept for the record; it is not part of
-the current Fixed-Time vs AI comparison workflow.*
+*R10 restored PPO as a first-class active agent (adaptive congestion reduction,
+`R = −αQ − βW + γT`). The historical `rush_hour` checkpoint is config-incompatible (the
+config digest changed since it trained), so PPO was retrained from scratch on `uneven` —
+lopsided demand `{N .45, E .30, S .15, W .10}` at 2200 vph, the scenario whose whole point
+is a persistent asymmetric queue for PPO to rebalance. The old run/checkpoint/eval stay on
+disk (destructive-change rule); the numbers below supersede them.*
 
-Run `ppo-20260907T171054Z`: 200 episodes, 910 s, **3 on-policy updates/episode** (post-tuning;
-was ~1). Return climbs +183 → +220 over the first ~60 episodes, then flat. Block-mean
-+198.6 (first 5) → +221.3 (last 5), delta +22.7. Entropy 1.38 → ~0.9 with noise.
+Run `ppo-20260908T193352Z`: 200 episodes, 858 s, **3 real PPO updates/episode** (GAE +
+clipped surrogate, 6 epochs × 64-minibatch). **Return is essentially flat** — block-mean
++189.0 (first 5) → +190.4 (last 5), delta **+1.3**. Entropy holds ~1.2–1.4, clip-fraction
+~0.09, approx-KL ~0.005 (stable, not collapsing — just not improving). On this scenario the
+reward is dominated by the throughput term `γT`, which is demand-bounded and near-constant
+across policies, so the gradient signal PPO can actually act on is small. This is the
+measured curve; it has not been reshaped to look like learning.
 
-| Metric | fixed-time | untrained PPO | **trained PPO** | trained vs fixed |
-|---|--:|--:|--:|--:|
-| avg vehicle waiting (s) | 9.49 | 9.12 | **6.58** | **+30.7 %** |
-| avg queue (veh) | 4.22 | 2.31 | **2.44** | +42.2 % |
-| travel time (s) | 56.56 | 64.27 | 51.83 | +8.4 % |
-| avg speed (m/s) | 4.82 | 7.92 | **7.98** | +65.7 % |
-| stops / veh | 0.53 | 0.52 | **0.37** | +30.4 % |
-| idle time (s) | 9.15 | 16.28 | 7.57 | +17.3 % |
-| fuel / veh (est.) | 0.106 | 0.108 | 0.099 | +6.4 % |
-| CO₂ / veh (est.) | 0.265 | 0.270 | 0.249 | +6.0 % |
-| **throughput (vph)** | 2970 | 3233 | **2595** | **−12.6 %** |
-| red-light violations / ep | 4.0 | 3.6 | 3.1 | +21.9 % |
-| safety overrides / episode | 0.0 | 59.4 | **47.1** | — |
+| Metric | dir | fixed-time | untrained PPO | **trained PPO** | trained vs fixed |
+|---|:--:|--:|--:|--:|--:|
+| avg vehicle waiting (s) | ↓ | 6.23 ±1.10 | 11.27 ±4.03 | **5.38 ±1.49** | +13.7 % *(CIs overlap)* |
+| avg queue (veh) | ↓ | 2.41 ±0.71 | 2.53 ±1.18 | 2.34 ±0.65 | +2.6 % *(within noise)* |
+| avg travel time (s) | ↓ | 53.41 ±0.27 | 62.75 ±0.65 | 62.47 ±0.59 | **−17.0 % (CIs disjoint)** |
+| avg speed (m/s) | ↑ | 6.25 ±0.59 | 7.47 ±1.17 | 7.82 ±0.68 | +25.1 % |
+| **throughput (vph)** | ↑ | 2430 ±288 | 2445 ±393 | **2168 ±133** | **−10.8 %** |
+| safety overrides / episode | — | 0.0 | 71.9 | **54.0** | — |
 
-n = 8, wide CIs. Report: `models/ppo/eval-20260907T172809Z.json`.
+n = 8, wide CIs — indicative, not a significance claim. Report:
+`models/ppo/eval-20260908T194951Z.json`.
 
-**Reading it honestly:**
-- Trained PPO cuts waiting, queues, stops and travel time hard vs fixed-time and moves
-  more smoothly (speed +66 %), with a fuel/CO₂ co-benefit.
-- **Unlike A2C and DQN, untrained PPO is *not* catastrophic** on `rush_hour` (waiting 9.1
-  ≈ fixed-time's 9.5). Training still helps — trained beats untrained on waiting, travel
-  time, stops and fuel — but the "trained ≫ random" gap is much smaller here, and untrained
-  actually pushes higher throughput.
-- **Throughput −12.6 %** is the real cost and it is the *same pattern in all three agents*:
-  they trade raw vehicles-served for smoother, lower-delay flow. None of the three reward
-  functions weights throughput heavily — this is a reward-design finding, flagged for the
-  coordinated-AI comparison and a penalty/weight review, not a training bug.
-- 47 safety overrides/episode — again the policy proposes aggressively and the safety layer
-  bounds it (§113-compliant).
+**Reading it honestly (§18):**
+- **Training helps relative to untrained** — trained PPO nearly halves untrained's waiting
+  (5.4 vs 11.3 s), matches its travel time, and cuts safety overrides 72 → 54/ep. The
+  policy is doing something real and deterministic, not random.
+- **Trained PPO does not beat fixed-time overall on `uneven`.** It trims the stop-line
+  queue and average wait (+2.6 % / +13.7 %, both inside the noise band), but pays for it
+  with **−10.8 % throughput** and a **−17.0 % end-to-end travel time regression whose CIs
+  do not overlap fixed-time's** — a genuine loss, not noise. It holds green on the busy
+  approaches, so cars near the stop line clear faster while the network as a whole moves
+  fewer vehicles and each trip takes longer.
+- Same throughput-vs-delay trade seen in A2C and DQN, more sharply here because the
+  reward barely rewards raw vehicles-served. Flagged for a reward-weight review
+  (raise `alpha_queue` / add an explicit travel-time term), not a training bug.
+- 54 safety overrides/episode — the policy proposes aggressively and the authoritative
+  safety layer bounds it (§113-compliant).
+- **No improvement is claimed or manufactured.** PPO is a first-class *active* agent under
+  R10 — real objective, real PPO updates, real checkpoint, real held-out eval — and this
+  is what that eval measured.
 
 ### Cross-agent notes
 
 Two findings recur across A2C, DQN and PPO and belong in the write-up:
-1. **Throughput dips** (−7.7 % / −8.8 % / −12.6 %) while every delay/queue/stop metric
-   improves. Consistent trade, driven by reward weighting, not a bug.
-2. **Heavy reliance on the safety layer** (147 / 27 / 47 overrides per episode). The
+1. **Throughput dips** (A2C −7.7 % / DQN −8.8 % / PPO −10.8 %) while the delay/queue/stop
+   metrics improve. Consistent trade, driven by reward weighting, not a bug. For PPO on
+   `uneven` the trade is not worth it — travel time regresses with disjoint CIs.
+2. **Heavy reliance on the safety layer** (147 / 27 / 54 overrides per episode). The
    safety controller is authoritative and doing its job; "learned behaviour" is partly
    "propose aggressively, get bounded". Reward-shaping to discourage the aggressive
    proposals is the follow-up.

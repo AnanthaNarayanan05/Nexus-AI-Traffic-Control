@@ -6,21 +6,18 @@
 > reproduced verbatim. The academic source of truth is
 > [`reference/Smart_Traffic_Signal_Multi_Algorithm.pptx`](reference/Smart_Traffic_Signal_Multi_Algorithm.pptx).
 
-> **⚠️ SUPERSEDED IN PART BY R9 (2026-09-08).** The governing directive is now the
-> *MASTER IMPLEMENTATION PROMPT — R9*. Where R9 and this document disagree, **R9 wins**.
+> **⚠️ SUPERSEDED IN PART BY R10 (2026-09-09).** The governing directive is now the
+> *MASTER IMPLEMENTATION PROMPT — R10*. Where R10 and this document disagree, **R10 wins**.
 > Deltas that matter for reading this file:
-> - **Active algorithm scope is A2C + DQN only.** PPO is deprecated / legacy — its code,
->   checkpoints and unit tests are *preserved* (R9 destructive-change rule) but it is out
->   of the live loop, coordination, training workflow and primary UI. Every "A2C / DQN / PPO"
->   phrasing below should be read as "A2C / DQN" for current work.
-> - **DQN objective** is stated by R9 as *efficiency / fuel / emissions / safety*.
-> - Remaining build priorities (R9 §35): ~~P1 evaluation + comparison UI~~ ✅ · ~~P2 scenario
->   system (8 presets + custom builder)~~ ✅ · ~~P3 replay (engine + Replay Lab) + inspectors
->   (`#/inspect`: coordination brain / signal / emergency / vehicle / DQN experience replay)~~ ✅ ·
->   ~~P4 export (`GET /api/v1/export/{experiments|replays}/{id}?format=csv|json`) + presentation mode
->   (`#/present`: reduced chrome, seed-42 flagship demos 1 emergency / 2 efficiency / 3 mixed crisis)~~ ✅ ·
->   P5 polish · P6 perf/a11y/responsive · P7 docs/QA/demo.
-> - Current honest state: [`docs/STATUS.md`](docs/STATUS.md) (see its "R9 scope revision" section).
+> - **Active algorithm scope is A2C + DQN + PPO** — the three-agent roster is restored
+>   (R10 supersedes the R9 A2C+DQN-only scope). A2C → emergency-vehicle prioritization
+>   (Anantha Narayanan A), DQN → efficiency / fuel / emissions / safety (Shaun Joseph
+>   Sabu), PPO → adaptive congestion reduction, `R = −αQ − βW + γT` (Delna Liz Denny).
+>   All three are in the live loop, coordination, training workflow and UI; the three
+>   objectives stay distinct and the networks are never merged.
+> - The authoritative safety layer stays above all agents (agents recommend →
+>   coordinator selects → safety authorizes → signal applies).
+> - Current honest state: [`docs/STATUS.md`](docs/STATUS.md) (see its "R10" section).
 
 ## 1–2. Project & core idea
 **NEXUS AI TRAFFIC CONTROL** — *Three Intelligent Agents. One Coordinated Traffic Control System.*

@@ -17,10 +17,10 @@ Presentation mode replaces the command bar and the view tabs with:
   seed, and one **✕ Exit presentation** control (or press `Esc`);
 - the intersection stage, the coordinator → authoritative-safety pipeline, and the
   measured-metrics row, all enlarged;
-- a rail with the three flagship-demo launchers and, once one is running, its plain-English
+- a rail with the four flagship-demo launchers and, once one is running, its plain-English
   brief and a "what to watch" list.
 
-The seed is **42** (`configs/config.yaml → simulation.seed`), shared by all three demos.
+The seed is **42** (`configs/config.yaml → simulation.seed`), shared by all four demos.
 
 ## Flagship demos (§60–63)
 
@@ -33,15 +33,16 @@ the dashboard.
 |---|---|---|---|---|---|
 | 1 | Emergency Response Challenge | `1` | `emergency_heavy` | A2C — emergency prioritization | Emergency wait falls as A2C holds green for the approach; the coordination basis flips to an emergency override; every forced change is still bounded by the safety layer. |
 | 2 | Efficiency Challenge | `2` | `high_stop_go` | DQN — fuel / CO₂ / stops | Stops per vehicle trend down; fuel and CO₂ per vehicle (both `ESTIMATED`) settle lower; average speed rises without the queue blowing up. |
-| 3 | Mixed Crisis | `3` | `mixed_crisis` | Full AI — coordination + safety | Both agents produce a recommendation every cycle; the coordinator picks a winner and the safety layer has the final say; no unsafe transitions even under load. |
+| 3 | Congestion Reduction | `3` | `uneven` | PPO — adaptive congestion reduction | Demand is lopsided across the four approaches; PPO reweights the green split toward the busy ones, so queue and average wait trend down while throughput holds; the coordination basis shows the congestion term carrying the decision. |
+| 4 | Mixed Crisis | `4` | `mixed_crisis` | Full AI — coordination + safety | All three agents produce a recommendation every cycle; the coordinator picks a winner and the safety layer has the final say; no unsafe transitions even under load. |
 
 `Restart this demo` reloads the current scenario at the pinned seed and starts it again.
 
 ## Suggested narration (Mixed Crisis)
 
-1. Launch demo 3. The stage fills with heavy N–S demand; the metrics row starts from zero.
+1. Launch demo 4. The stage fills with heavy N–S demand; the metrics row starts from zero.
 2. An ambulance appears — the stage banner shows its approach and ETA.
-3. In the coordination panel, A2C's recommendation and DQN's recommendation are shown
+3. In the coordination panel, the A2C, DQN and PPO recommendations are shown
    side by side, then the coordinator's pick, then what the safety layer actually applied.
 4. When safety rewrites or blocks a change, the amber banner says so — "no agent
    recommendation can bypass this layer".

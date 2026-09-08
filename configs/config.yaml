@@ -77,7 +77,7 @@ demand:
   profiles:
     normal:      {N: 0.20, E: 0.25, S: 0.30, W: 0.25}
     rush_hour:   {N: 0.50, E: 0.15, S: 0.25, W: 0.10, arrivals_vph: 2600}
-    uneven:      {N: 0.45, E: 0.30, S: 0.15, W: 0.10}
+    uneven:      {N: 0.45, E: 0.30, S: 0.15, W: 0.10, arrivals_vph: 2200}   # strongly lopsided demand at a load heavy enough to build a real queue (PPO congestion scenario)
     high_stop_go: {N: 0.28, E: 0.24, S: 0.26, W: 0.22, arrivals_vph: 2200}
     safety_stress: {N: 0.26, E: 0.26, S: 0.24, W: 0.24, arrivals_vph: 2400}   # balanced + heavy: maximises red-running temptation
     mixed_crisis:  {N: 0.40, E: 0.20, S: 0.28, W: 0.12, arrivals_vph: 2800}   # asymmetric + very heavy: the everything-at-once case

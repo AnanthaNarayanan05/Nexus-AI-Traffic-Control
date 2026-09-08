@@ -18,7 +18,7 @@ dashboard renders once per AI decision:
 |---|---|
 | `t` / `step` | sim time and physics step of the decision |
 | `state_summary` | compact traffic state (phase, per-approach queues, vehicles, emergency, throughput, violations) |
-| `recommendations` | `{a2c, dqn}` → the agent's `AgentRecommendation` (target phase, action, score, confidence, priority, value estimate, reason) |
+| `recommendations` | `{a2c, dqn, ppo}` → the agent's `AgentRecommendation` (target phase, action, score, confidence, priority, value estimate, reason) |
 | `coordination` | the `CoordinationDecision` — candidate phase, winner, basis, priority-ladder trace, per-phase score breakdown |
 | `safety` | the `SafetyResult` — approved flag, `action_taken`, violated rules, reason, the command actually applied |
 | `rewards` / `reward_breakdowns` | per-agent scalar reward and its component decomposition (realised one interval later — on-policy order, [`assumptions.md` A18](assumptions.md)) |
@@ -124,7 +124,7 @@ only reads.
   1. **pipeline row** — `COORDINATOR` (candidate phase + winner + basis) → `SAFETY ·
      AUTHORITATIVE` (applied phase + `action_taken` + reason). Where they differ the
      safety layer won — stated in the legend and the row (§113).
-  2. **AGENT RECOMMENDATIONS** — a2c / dqn: target phase, action, score / confidence /
+  2. **AGENT RECOMMENDATIONS** — a2c / dqn / ppo: target phase, action, score / confidence /
      priority / value, reason; `— no recommendation` when absent.
   3. **COORDINATION LADDER** — the `ladder_trace` rungs + per-phase score components.
   4. **REWARD DECOMPOSITION** — per-agent total + each component's contribution

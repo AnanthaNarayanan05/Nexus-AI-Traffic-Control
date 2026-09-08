@@ -17,8 +17,9 @@ A comparison of one or more **controllers** on a single **scenario** over a fixe
 | `fixed_time` | the fixed-cycle baseline (`FixedTimeController`) |
 | `a2c` | the A2C agent — emergency-vehicle prioritization |
 | `dqn` | the DQN agent — efficiency / fuel / emissions / safety |
+| `ppo` | the PPO agent — adaptive congestion reduction |
 
-PPO is out of the R9 active scope and is rejected (`422`).
+Any other controller id is rejected (`422`).
 
 Per agent controller a **model selector** picks the weights:
 
