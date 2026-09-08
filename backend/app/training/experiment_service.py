@@ -31,7 +31,7 @@ from app.training.manager import ACTIVE_AGENTS, _git_commit
 
 log = get_logger("EXPERIMENT")
 
-CONTROLLERS = ("fixed_time", *ACTIVE_AGENTS)   # fixed_time | a2c | dqn
+CONTROLLERS = ("fixed_time", *ACTIVE_AGENTS)   # fixed_time | a2c | dqn | ppo
 MODEL_MODES = ("untrained", "active", "latest")
 MAX_SEEDS = 16
 MIN_EPISODE_SECONDS = 60.0
@@ -105,8 +105,7 @@ def _clean_controllers(raw: list[str]) -> list[str]:
         c = str(c).strip().lower()
         if c not in CONTROLLERS:
             raise ValueError(
-                f"unknown controller '{c}' (choose from {list(CONTROLLERS)}; "
-                f"PPO is out of the R9 active scope)"
+                f"unknown controller '{c}' (choose from {list(CONTROLLERS)})"
             )
         if c not in seen:
             seen.append(c)

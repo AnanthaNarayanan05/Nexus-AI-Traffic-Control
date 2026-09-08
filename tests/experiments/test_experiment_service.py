@@ -112,8 +112,9 @@ def test_second_run_while_running_is_rejected(svc):
 
 
 def test_start_rejects_bad_input(svc):
+    # a2c / dqn / ppo are all valid controllers now (R10); an unknown key is not
     with pytest.raises(ValueError, match="controller"):
-        svc.start(name=None, scenario="normal", controllers=["ppo"], seeds=[1])
+        svc.start(name=None, scenario="normal", controllers=["sarsa"], seeds=[1])
     with pytest.raises(KeyError):
         svc.start(name=None, scenario="nope", controllers=["fixed_time"], seeds=[1])
     with pytest.raises(ValueError, match="seed"):

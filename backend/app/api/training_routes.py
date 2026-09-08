@@ -69,7 +69,7 @@ def models(agent: str | None = Query(default=None),
     from app.training.manager import ACTIVE_AGENTS
 
     rows = ModelRegistry().list(agent=agent, status=status)
-    # legacy PPO rows stay in the DB but are not surfaced through the lab (R9)
+    # the three active agents (a2c, dqn, ppo); any other agent key is a stale row
     rows = [r for r in rows if r.get("agent") in ACTIVE_AGENTS]
     return {"models": rows}
 

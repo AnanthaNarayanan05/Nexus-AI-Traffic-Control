@@ -219,6 +219,7 @@ def agents() -> dict:
         "ownership": {
             "a2c": {"objective": "Emergency vehicle prioritization", "owner": "Anantha Narayanan A"},
             "dqn": {"objective": "Efficiency, fuel, emissions and safety", "owner": "Shaun Joseph Sabu"},
+            "ppo": {"objective": "Adaptive congestion reduction", "owner": "Delna Liz Denny"},
         },
     }
 
@@ -231,7 +232,7 @@ def agent_inspector(agent: str) -> dict:
     except ValueError as exc:
         raise HTTPException(404, f"unknown agent '{agent}'") from exc
     if name not in mgr.agents:
-        raise HTTPException(404, f"agent '{agent}' is not in the active scope (A2C + DQN)")
+        raise HTTPException(404, f"agent '{agent}' is not a live RL agent")
     return mgr.agent_inspector(agent)
 
 

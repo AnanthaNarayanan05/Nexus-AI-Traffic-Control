@@ -2,10 +2,11 @@
 
 Owns exactly one running simulation and wires the pipeline:
 
-    A2C / DQN  ->  COORDINATION  ->  SAFETY  ->  SIGNAL  ->  SIMULATION
+    A2C / DQN / PPO  ->  COORDINATION  ->  SAFETY  ->  SIGNAL  ->  SIMULATION
 
-(PPO is a legacy agent, out of the R9 active scope - its class is preserved but is
-not built into the live loop; see docs/STATUS.md.)
+Three objective-specific agents (R10): A2C emergency priority, DQN efficiency /
+fuel / emissions / safety, PPO adaptive congestion reduction. Each recommends; the
+coordinator selects a candidate; the authoritative safety layer has the final word.
 
 Two decoupled cadences (spec section 72):
   * physics  - every `simulation.step_length_s` of simulated time
@@ -32,6 +33,7 @@ from app.agents.common.base import BaseAgent
 from app.agents.common.resolve import action_to_command
 from app.agents.common.rewards import make_reward_context
 from app.agents.dqn import DQNAgent
+from app.agents.ppo import PPOAgent
 from app.control import FixedTimeController, manual_command
 from app.coordination import Coordinator
 from app.core.config import get_config, get_settings
@@ -91,8 +93,9 @@ class SimulationManager:
         self.adapter = get_adapter()
         self.a2c = A2CAgent(seed=self.default_seed)
         self.dqn = DQNAgent(seed=self.default_seed)
+        self.ppo = PPOAgent(seed=self.default_seed)
         self.agents: dict[AgentName, BaseAgent] = {
-            AgentName.A2C: self.a2c, AgentName.DQN: self.dqn,
+            AgentName.A2C: self.a2c, AgentName.DQN: self.dqn, AgentName.PPO: self.ppo,
         }
         # Which weights each agent is running: "untrained" (fresh init) or "trained"
         # (a validated checkpoint from the registry). Starts untrained - the live app
@@ -225,7 +228,7 @@ class SimulationManager:
             return self.status()
         return self.submit(op)
 
-    _AGENT_CLASSES = {AgentName.A2C: A2CAgent, AgentName.DQN: DQNAgent}
+    _AGENT_CLASSES = {AgentName.A2C: A2CAgent, AgentName.DQN: DQNAgent, AgentName.PPO: PPOAgent}
 
     def set_model(self, agent: str, mode: str, version: str | None = None) -> dict:
         """Swap an agent between fresh (``untrained``) weights and a registry checkpoint.
@@ -240,7 +243,7 @@ class SimulationManager:
         except ValueError as exc:
             raise ValueError(f"unknown agent {agent!r}") from exc
         if name not in self._AGENT_CLASSES:
-            raise ValueError(f"agent {name.value!r} is not in the active scope (A2C + DQN only)")
+            raise ValueError(f"agent {name.value!r} is not a known RL agent (A2C, DQN, PPO)")
         mode = mode.lower()
         if mode not in ("untrained", "trained"):
             raise ValueError(f"mode must be 'untrained' or 'trained' (got {mode!r})")
@@ -274,8 +277,10 @@ class SimulationManager:
             self.agents[name] = fresh
             if name == AgentName.A2C:
                 self.a2c = fresh
-            else:
+            elif name == AgentName.DQN:
                 self.dqn = fresh
+            else:
+                self.ppo = fresh
             self._model_mode[name] = mode
             self._model_source[name] = source_id
             self._pending = None  # mixing policies mid-decision is not comparable
@@ -502,7 +507,8 @@ class SimulationManager:
             self._pending = None
 
     def _decide_ai(self, state: SimulationState):
-        recs = [self.agents[n].act(state) for n in (AgentName.A2C, AgentName.DQN)]
+        recs = [self.agents[n].act(state)
+                for n in (AgentName.A2C, AgentName.DQN, AgentName.PPO)]
         decision = self.coordinator.resolve(recs, state)
         by_agent = {r.agent: r for r in recs}
 

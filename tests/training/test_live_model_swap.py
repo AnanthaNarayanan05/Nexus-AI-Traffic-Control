@@ -64,10 +64,18 @@ def test_trained_request_for_a_missing_checkpoint_raises(client_free_manager: Si
     assert client_free_manager.status()["agents"]["dqn"]["is_trained"] is False
 
 
-def test_deprecated_ppo_is_rejected_from_live_inference(client_free_manager: SimulationManager):
-    with pytest.raises(ValueError, match="active scope"):
-        client_free_manager.set_model("ppo", "untrained")
-    assert "ppo" not in client_free_manager.status()["model_modes"]
+def test_ppo_is_a_live_inference_agent(client_free_manager: SimulationManager):
+    # R10: PPO is one of the three active agents - it is in the live loop and its
+    # untrained mode is honoured like A2C / DQN.
+    st = client_free_manager.set_model("ppo", "untrained")
+    assert st["model_modes"]["ppo"] == "untrained"
+    assert st["agents"]["ppo"]["is_trained"] is False
+    assert client_free_manager.ppo is client_free_manager.agents[AgentName.PPO]
+
+
+def test_unknown_agent_is_rejected_from_live_inference(client_free_manager: SimulationManager):
+    with pytest.raises(ValueError, match="unknown agent"):
+        client_free_manager.set_model("sarsa", "untrained")
 
 
 @pytest.fixture

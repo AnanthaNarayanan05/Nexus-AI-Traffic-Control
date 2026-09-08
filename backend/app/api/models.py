@@ -23,7 +23,7 @@ class SpeedRequest(BaseModel):
 
 
 class ModelRequest(BaseModel):
-    agent: str = Field(description="a2c | dqn")
+    agent: str = Field(description="a2c | dqn | ppo")
     mode: str = Field(description="untrained | trained")
     version: str | None = Field(
         default=None,
@@ -58,7 +58,7 @@ class DuplicateScenarioRequest(BaseModel):
 
 
 class StartTrainingRequest(BaseModel):
-    agent: str = Field(description="a2c | dqn")
+    agent: str = Field(description="a2c | dqn | ppo")
     episodes: int = Field(ge=1, le=1000)
     scenario: str | None = Field(default=None, description="preset id; default = agent's own stress scenario")
     seed: int | None = None
@@ -70,7 +70,7 @@ class StartExperimentRequest(BaseModel):
                              description="optional label; a default is derived from the config")
     scenario: str = Field(description="preset id or a saved custom scenario id")
     controllers: list[str] = Field(
-        description="any of: fixed_time, a2c, dqn (PPO is out of the R9 active scope)")
+        description="any of: fixed_time, a2c, dqn, ppo")
     seeds: list[int] = Field(description="held-out episode seeds; one episode per (controller, seed)")
     models: dict[str, str] = Field(
         default_factory=dict,

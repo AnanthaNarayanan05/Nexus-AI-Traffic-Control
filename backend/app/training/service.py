@@ -112,8 +112,7 @@ class TrainingService:
     def history(self, limit: int = 50) -> list[dict]:
         """Finished runs, newest first, from the on-disk ``<run_id>.json`` records.
 
-        Restricted to the active-scope agents; legacy PPO run records stay on disk but
-        are not surfaced through the Training Lab (R9).
+        Covers the three active agents (a2c, dqn, ppo).
         """
         out: list[dict] = []
         models_dir = get_settings().models_dir
@@ -146,7 +145,7 @@ class TrainingService:
             raise KeyError(f"unknown agent '{agent}' (known: {sorted(AGENT_CLASSES)})")
         if agent not in ACTIVE_AGENTS:
             raise ValueError(
-                f"agent '{agent}' is deprecated and out of scope - train {list(ACTIVE_AGENTS)} only"
+                f"agent '{agent}' is not an active RL agent - train {list(ACTIVE_AGENTS)}"
             )
         episodes = int(episodes)
         if not 1 <= episodes <= MAX_EPISODES:
