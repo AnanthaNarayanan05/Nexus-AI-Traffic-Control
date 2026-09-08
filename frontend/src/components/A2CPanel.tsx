@@ -67,7 +67,7 @@ export function A2CPanel() {
       <div>
         <SectionLabel>Actor policy π(a|s)</SectionLabel>
         {dist.length === 0 ? (
-          <Empty>No forward pass yet — start the simulation.</Empty>
+          <Empty>No forward pass yet. Start the simulation.</Empty>
         ) : (
           <div style={{ marginTop: 5 }}>
             {dist.map((p, i) => (

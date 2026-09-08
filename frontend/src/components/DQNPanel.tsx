@@ -82,7 +82,7 @@ export function DQNPanel() {
       <div>
         <SectionLabel>Q(s, a)</SectionLabel>
         {qValues.length === 0 ? (
-          <Empty>No Q-values yet — start the simulation.</Empty>
+          <Empty>No Q-values yet. Start the simulation.</Empty>
         ) : (
           <div style={{ marginTop: 5 }}>
             {qValues.map((q, i) => (

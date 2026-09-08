@@ -306,7 +306,7 @@ function SignalInspector() {
   if (!signal) {
     return (
       <Panel title="SIGNAL" accent="var(--accent)" actions={<LiveTag />}>
-        <Empty>No signal state yet — start the simulation.</Empty>
+        <Empty>No signal state yet. Start the simulation.</Empty>
       </Panel>
     );
   }
