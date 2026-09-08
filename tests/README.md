@@ -17,10 +17,11 @@ pytest-asyncio deprecation warning appears).
 | `factories.py` | `make_state(...)` synthetic `SimulationState` builder, `active_emergency(...)`, `advance(eng, seconds)`. Imported by `conftest.py` for its side effect of putting `backend/` on `sys.path`, so `app.*` resolves whatever the working directory is. |
 | `conftest.py` | `state` and `adapter` fixtures. |
 | `agents/` | reward *form* (components / signs / `contribution == raw*weight`), state-builder observation contract (dims, float32, `[0,1]` normalisation, labels), agent inference contract (valid recommendation, honest `is_trained=False`, inspector shape, objective ownership kept separate); DQN raw Q-values in the inspector, and `observe()` fills the replay buffer in inference mode while `learn()` stays a no-op (R9 P3 §17). |
+| `api/test_exporters.py` | R9 P4 export serialisers (`app/api/exporters.py`): experiment CSV is one tidy row per `(metric, controller)` with the full stats + honest improvement %, baseline row has no improvement; replay CSV is one row per decision (coordinator candidate → authoritative applied phase, safety verdict, per-agent reward, flat metrics), a missing metric is blank not zero (§84); `safe_filename` strips path separators / dodgy chars. Pure functions, no DB. |
 | `coordination/test_coordination.py` | priority ladder: timing short-circuits, emergency override threshold, valid-phase filter, weighted scoring, consensus, purity. |
 | `coordination/test_safety.py` | one test per safety rule in `RULES` order + the `APPLIED` pass-through + validator bookkeeping. |
 | `simulation/` | same-seed reproducibility, different-seed divergence, `reset()` rewind, geometry vs `config.yaml`. |
-| `integration/test_api.py` | REST + WS surface through `TestClient` (lifespan on). Training + models endpoints live (status, start-validation, unknown-id 404, `training_update` over WS); `POST /simulation/model` (defaults untrained, rejects a trained request with no checkpoint, bad input); agents restricted to `{a2c, dqn}` with `GET /agents/ppo` → 404 (R9); `experiments` endpoints live (R9 P1 — status/detail shapes, `POST` validation: ppo controller → 422, unknown scenario → 404, empty seeds → 422, missing checkpoint → 422); scenarios (R9 P2 — all 8 §8A presets present with metadata, `POST` create validates + persists + 409 on preset id + 422 on out-of-range / unknown field, `duplicate`, `DELETE` refuses presets / 404 unknown); replay (R9 P3 — `capture` 409 below the minimum then 201, list is summary-only, `GET /{id}` frame shape, `/at?t=` lands on the right decision, `DELETE` then 404, and a run reset with decisions leaves a `partial` replay behind); `export` asserted **absent**, not stubbed (spec §98). |
+| `integration/test_api.py` | REST + WS surface through `TestClient` (lifespan on). Training + models endpoints live (status, start-validation, unknown-id 404, `training_update` over WS); `POST /simulation/model` (defaults untrained, rejects a trained request with no checkpoint, bad input); agents restricted to `{a2c, dqn}` with `GET /agents/ppo` → 404 (R9); `experiments` endpoints live (R9 P1 — status/detail shapes, `POST` validation: ppo controller → 422, unknown scenario → 404, empty seeds → 422, missing checkpoint → 422); scenarios (R9 P2 — all 8 §8A presets present with metadata, `POST` create validates + persists + 409 on preset id + 422 on out-of-range / unknown field, `duplicate`, `DELETE` refuses presets / 404 unknown); replay (R9 P3 — `capture` 409 below the minimum then 201, list is summary-only, `GET /{id}` frame shape, `/at?t=` lands on the right decision, `DELETE` then 404, and a run reset with decisions leaves a `partial` replay behind); export (R9 P4 — unknown id → 404, bad `format` → 422, an experiment written straight to the store then exported as CSV + JSON with the `attachment` header, a real captured replay exported as a per-decision CSV). |
 | `training/test_training.py` | headless single-agent training: safety consulted on every decision (§113), episodes advance + `trained_episodes` increments, A2C runs real gradient steps, PPO does several on-policy updates per full episode (tuning guard — PPO now legacy but its `learn()` path stays covered), same-seed reproducibility, `TrainingManager` checkpoints round-trip. Short (~4 min sim) episodes. |
 | `training/test_live_model_swap.py` | STEP 8: `SimulationManager.set_model` loads a real trained checkpoint into the live loop, flips `is_trained` honestly, reverts on `untrained`, raises for a missing checkpoint (no fake badge), and rejects deprecated `ppo` (R9). |
 | `training/test_evaluation.py` | headless evaluation: fixed-time deterministic + 0 overrides, agent eval deterministic, aggregates carry every metric key, a trained checkpoint changes behaviour, `improvement_pct` sign follows metric direction, `compare` / `write_report` shapes. |
@@ -52,15 +53,17 @@ UNTRAINED/TRAINED toggle reflects status + emits the `set_model` command),
 always shown, directional-improvement colouring, "within noise" for sub-CI deltas, no fake
 ratio when the baseline is ~0, direction indicators), `src/experiments/ExperimentLab.test.tsx`
 (the `#/experiments` view: honest-comparison framing, controller picker, past-experiment
-rows — API client stubbed), `src/scenarios/ScenarioLab.test.tsx` (the `#/scenarios` view:
+rows, CSV / JSON export links on a completed run's detail point at
+`/export/experiments/{id}` (R9 P4) — API client stubbed),
+`src/scenarios/ScenarioLab.test.tsx` (the `#/scenarios` view:
 presets list with difficulty, presets are read-only with only "Duplicate to edit", a custom
 scenario opens editable with Save/Delete, "+ New" slugifies the name into the id and Save
 posts the draft, the preview describes the draft in plain English — API client stubbed),
 `src/replay/ReplayLab.test.tsx` (the `#/replay` view: list with PARTIAL / FULL-EPISODE
 badge, newest replay auto-opens and shows the coordinator → authoritative-safety pipeline,
 the transport steps through decisions, "Capture current run" hits the endpoint and shows
-the result with a friendly message on 409, "vehicle-level playback is not captured" stated
-— API client stubbed), `src/inspectors/InspectorLab.test.tsx` (the `#/inspect` view, R9 P3
+the result with a friendly message on 409, "vehicle-level playback is not captured" stated,
+CSV / JSON export links point at `/export/replays/{id}` (R9 P4) — API client stubbed), `src/inspectors/InspectorLab.test.tsx` (the `#/inspect` view, R9 P3
 §19: the Coordination brain shows the coordinator → authoritative-safety pipeline + priority
 ladder + phase scores + per-agent recommendations + safety verdict, warns when safety
 rewrote the choice, empty state outside AI mode; the Signal tab renders the phase SM +

@@ -9,8 +9,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { ExportLinks } from '../components/common/ExportLinks';
 import { Badge, Empty, KV, Panel, SectionLabel } from '../components/common/Primitives';
-import { ApiError, api } from '../lib/api';
+import { ApiError, api, exportUrls } from '../lib/api';
 import { NO_DATA, int, num } from '../lib/format';
 import type {
   ExperimentController,
@@ -362,9 +363,16 @@ function SelectedExperiment({
       title="SELECTED EXPERIMENT"
       accent="var(--accent)"
       actions={
-        <button className="btn" type="button" onClick={onClose}>
-          Close
-        </button>
+        <div className="exp-detail-actions">
+          <ExportLinks
+            url={(f) => exportUrls.experiment(detail.id, f)}
+            disabled={detail.status !== 'completed' || !detail.comparison}
+            title="Download this comparison — CSV is one row per metric per controller, JSON is the full record"
+          />
+          <button className="btn" type="button" onClick={onClose}>
+            Close
+          </button>
+        </div>
       }
     >
       <div className="train-run-head">

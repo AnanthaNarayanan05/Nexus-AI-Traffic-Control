@@ -180,6 +180,10 @@ vi.mock('../lib/api', () => ({
     captureReplay: hoisted.captureReplay,
     deleteReplay: hoisted.deleteReplay,
   },
+  exportUrls: {
+    experiment: (id: string, format: string) => `http://x/api/v1/export/experiments/${id}?format=${format}`,
+    replay: (id: string, format: string) => `http://x/api/v1/export/replays/${id}?format=${format}`,
+  },
 }));
 
 vi.mock('../lib/ws', () => ({
@@ -242,6 +246,15 @@ describe('ReplayLab', () => {
     fireEvent.click(screen.getByRole('button', { name: /capture current run/i }));
     await waitFor(() => expect(hoisted.captureReplay).toHaveBeenCalledTimes(1));
     expect(await screen.findByText(/captured .* 7 decisions/i)).toBeInTheDocument();
+  });
+
+  it('offers CSV / JSON download links for the open replay (R9 P4)', async () => {
+    render(<ReplayLab />);
+    await screen.findByText('AGENT RECOMMENDATIONS');
+    const csv = screen.getByRole('link', { name: 'CSV' }) as HTMLAnchorElement;
+    const json = screen.getByRole('link', { name: 'JSON' }) as HTMLAnchorElement;
+    expect(csv.getAttribute('href')).toContain('/export/replays/replay-2?format=csv');
+    expect(json.getAttribute('href')).toContain('/export/replays/replay-2?format=json');
   });
 
   it('shows a friendly message when there is nothing to capture (409)', async () => {

@@ -145,9 +145,15 @@ only reads.
 - `episode_metrics` is populated only for a `FULL EPISODE` replay; a `PARTIAL` capture
   carries `null` there rather than a truncated aggregate.
 
-## 7. Not yet built
+## 7. Export
+
+`GET /api/v1/export/replays/{id}?format=csv|json` — CSV is one row per decision
+(coordinator candidate → authoritative applied phase, safety action, per-agent reward,
+flat metric snapshot); JSON is the whole record. See [`exports.md`](exports.md). The
+Replay Lab links to both from the selected replay's panel (R9 P4).
+
+## 8. Not yet built
 
 - **Synchronized replay of an experiment's compared runs** on one timeline (§18) — needs
   the experiment runner to keep per-decision data, which today it does not (it records
   episode aggregates only). Deferred.
-- **Export** of a replay (CSV / JSON) — R9 P4 (§23).

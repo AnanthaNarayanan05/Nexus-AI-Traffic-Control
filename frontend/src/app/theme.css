@@ -373,6 +373,37 @@ button {
   align-items: center;
 }
 
+/* export download links (R9 P4) */
+.export-links {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.export-links-label {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+a.export-link {
+  text-decoration: none;
+  color: var(--text-dim);
+}
+
+a.export-link:hover {
+  background: #1a2434;
+  color: var(--text);
+}
+
+.exp-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .seg {
   display: flex;
   background: var(--bg-inset);

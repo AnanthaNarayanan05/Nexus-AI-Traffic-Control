@@ -17,7 +17,8 @@
 > - Remaining build priorities (R9 §35): ~~P1 evaluation + comparison UI~~ ✅ · ~~P2 scenario
 >   system (8 presets + custom builder)~~ ✅ · ~~P3 replay (engine + Replay Lab) + inspectors
 >   (`#/inspect`: coordination brain / signal / emergency / vehicle / DQN experience replay)~~ ✅ ·
->   P4 export + presentation mode · P5 polish · P6 perf/a11y/responsive · P7 docs/QA/demo.
+>   P4 ~~export (`GET /api/v1/export/{experiments|replays}/{id}?format=csv|json`)~~ ✅ + presentation mode ·
+>   P5 polish · P6 perf/a11y/responsive · P7 docs/QA/demo.
 > - Current honest state: [`docs/STATUS.md`](docs/STATUS.md) (see its "R9 scope revision" section).
 
 ## 1–2. Project & core idea

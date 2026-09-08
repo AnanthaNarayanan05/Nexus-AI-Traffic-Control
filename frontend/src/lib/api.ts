@@ -148,3 +148,18 @@ export const api = {
 };
 
 export const API_BASE = BASE;
+
+export type ExportFormat = 'csv' | 'json';
+
+/**
+ * Direct-download URLs for the export surface (R9 P4). These are plain `<a href>`
+ * targets, not `fetch` calls — the backend sends `Content-Disposition: attachment`, so
+ * the browser downloads the file and the SPA never navigates. `id`s are server-minted
+ * (`exp-…` / `replay-…`), never user text, but encode defensively anyway.
+ */
+export const exportUrls = {
+  experiment: (id: string, format: ExportFormat) =>
+    `${BASE}/api/v1/export/experiments/${encodeURIComponent(id)}?format=${format}`,
+  replay: (id: string, format: ExportFormat) =>
+    `${BASE}/api/v1/export/replays/${encodeURIComponent(id)}?format=${format}`,
+};

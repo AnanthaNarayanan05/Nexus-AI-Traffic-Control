@@ -4,7 +4,8 @@ Spec §16, §48–56. Experiments run **real headless simulations** — no synth
 (§84). One Fixed-Time vs AI comparison at a time.
 
 Status: **implemented (R9 P1, 2026-09-08)** — service + REST/WS + persistence + Experiment
-Lab UI. CSV/JSON export is P4; synchronized replay is P3.
+Lab UI. CSV/JSON export added in P4 (see [`exports.md`](exports.md)); synchronized replay
+is deferred (see [`replay.md`](replay.md) §8).
 
 ## 1. What an experiment is
 
@@ -118,8 +119,15 @@ decision/step cadence, torch version)`. Headless evaluation is deterministic per
 `(scenario, seed, controller, checkpoint)`; not bit-reproducible across different
 CPU/BLAS for the torch forward pass or different Python/numpy minor versions.
 
-## 8. Not yet built
+## 8. Export
 
-- **CSV / JSON export** of an experiment — R9 P4 (§23).
-- **Synchronized replay** of the compared runs on one timeline — R9 P3 (§18); the
-  `replays` table and `GET /api/v1/replay` do not exist yet (`404`).
+`GET /api/v1/export/experiments/{id}?format=csv|json` — CSV is one row per
+`(metric, controller)` with the full `summarise_series` stats + honest
+`improvement_pct_vs_baseline`; JSON is the whole stored row. The Experiment Lab links to
+both from a completed run's detail panel (R9 P4). See [`exports.md`](exports.md).
+
+## 9. Not yet built
+
+- **Synchronized replay** of the compared runs on one timeline — R9 P3 (§18). Needs the
+  experiment runner to keep per-decision data; today it records episode aggregates only.
+  Deferred (see [`replay.md`](replay.md) §8).

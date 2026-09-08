@@ -11,6 +11,7 @@ import type { ExperimentSnapshot, ScenarioSummary } from '../lib/types';
 
 const hoisted = vi.hoisted(() => ({
   snapshot: { seq: 0, running: false, job: null, history: [] } as ExperimentSnapshot,
+  experiment: vi.fn(),
 }));
 
 vi.mock('../lib/api', () => ({
@@ -18,7 +19,11 @@ vi.mock('../lib/api', () => ({
   api: {
     experiments: () => Promise.resolve(hoisted.snapshot),
     startExperiment: vi.fn(() => Promise.resolve(hoisted.snapshot)),
-    experiment: vi.fn(() => Promise.resolve(null)),
+    experiment: hoisted.experiment,
+  },
+  exportUrls: {
+    experiment: (id: string, format: string) => `http://x/api/v1/export/experiments/${id}?format=${format}`,
+    replay: (id: string, format: string) => `http://x/api/v1/export/replays/${id}?format=${format}`,
   },
 }));
 
@@ -50,6 +55,7 @@ const SCENARIOS: ScenarioSummary[] = [
 
 beforeEach(() => {
   hoisted.snapshot = { seq: 0, running: false, job: null, history: [] };
+  hoisted.experiment.mockReset().mockResolvedValue(null);
   useSimStore.setState({ scenarios: SCENARIOS });
 });
 
@@ -69,6 +75,66 @@ describe('ExperimentLab', () => {
     expect(screen.getByText(/A2C — emergency/)).toBeInTheDocument();
     expect(screen.getByText(/DQN — efficiency/)).toBeInTheDocument();
     await screen.findByText(/No experiment this session/i);
+  });
+
+  it('offers CSV / JSON export on a completed experiment detail (R9 P4)', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    hoisted.snapshot = {
+      seq: 1,
+      running: false,
+      job: null,
+      history: [
+        {
+          id: 'exp-20260908T120000000Z',
+          name: 'normal · fixed_time vs a2c',
+          created_at: '2026-09-08T12:00:00Z',
+          finished_at: '2026-09-08T12:00:20Z',
+          wall_time_s: 20.4,
+          scenario: 'normal',
+          controllers: ['fixed_time', 'a2c'],
+          seeds: [1, 2],
+          episode_seconds: 90,
+          baseline: 'fixed_time',
+          status: 'completed',
+          error: null,
+        },
+      ],
+    };
+    hoisted.experiment.mockResolvedValue({
+      id: 'exp-20260908T120000000Z',
+      name: 'normal · fixed_time vs a2c',
+      created_at: '2026-09-08T12:00:00Z',
+      finished_at: '2026-09-08T12:00:20Z',
+      wall_time_s: 20.4,
+      scenario: 'normal',
+      controllers: ['fixed_time', 'a2c'],
+      seeds: [1, 2],
+      episode_seconds: 90,
+      baseline: 'fixed_time',
+      status: 'completed',
+      error: null,
+      reproducibility: { config_digest: 'abc' },
+      comparison: {
+        scenario: 'normal',
+        baseline: 'fixed_time',
+        seeds: [1, 2],
+        n_episodes: 2,
+        metrics: {},
+      },
+      results: [],
+    });
+
+    render(<ExperimentLab />);
+    fireEvent.click(await screen.findByText('normal · fixed_time vs a2c'));
+
+    const csv = (await screen.findByRole('link', { name: 'CSV' })) as HTMLAnchorElement;
+    const json = screen.getByRole('link', { name: 'JSON' }) as HTMLAnchorElement;
+    expect(csv.getAttribute('href')).toContain(
+      '/export/experiments/exp-20260908T120000000Z?format=csv',
+    );
+    expect(json.getAttribute('href')).toContain(
+      '/export/experiments/exp-20260908T120000000Z?format=json',
+    );
   });
 
   it('renders a past experiment row from the API', async () => {

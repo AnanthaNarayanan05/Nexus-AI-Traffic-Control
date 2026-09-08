@@ -14,6 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import (
     api_router,
     experiment_router,
+    export_router,
     replay_router,
     training_router,
     ws_router,
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(training_router)
     app.include_router(experiment_router)
     app.include_router(replay_router)
+    app.include_router(export_router)
     app.include_router(ws_router)
 
     @app.get("/")

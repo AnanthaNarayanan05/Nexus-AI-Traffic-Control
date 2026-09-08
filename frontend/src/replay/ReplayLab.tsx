@@ -14,8 +14,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { ExportLinks } from '../components/common/ExportLinks';
 import { Badge, Empty, KV, Panel, SectionLabel, Stat } from '../components/common/Primitives';
-import { ApiError, api } from '../lib/api';
+import { ApiError, api, exportUrls } from '../lib/api';
 import { AGENT_LABEL, NO_DATA, clock, num, pct, titleise } from '../lib/format';
 import type {
   AgentKey,
@@ -670,7 +671,16 @@ export function ReplayLab() {
 
         <div className="lab-col">
           {selectedSummary ? (
-            <Panel title="REPLAY" accent="var(--text-dim)">
+            <Panel
+              title="REPLAY"
+              accent="var(--text-dim)"
+              actions={
+                <ExportLinks
+                  url={(f) => exportUrls.replay(selectedSummary.id, f)}
+                  title="Download this replay — CSV is one row per decision, JSON is the full timeline"
+                />
+              }
+            >
               <div className="kv-list">
                 <KV k="scenario" v={`${selectedSummary.scenario_name} (${selectedSummary.scenario_id})`} />
                 <KV k="seed" v={selectedSummary.seed} />

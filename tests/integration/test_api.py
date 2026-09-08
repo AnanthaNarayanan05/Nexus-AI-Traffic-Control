@@ -1,8 +1,8 @@
 """REST + WebSocket surface (spec section 88, docs/system-flow.md section 3).
 
 Drives the real FastAPI app through Starlette's TestClient (lifespan on, so the
-simulation loop thread is live). Experiments (R9 P1) and replay (R9 P3) are now live;
-`export` remains deferred and is asserted absent rather than stubbed (spec §98).
+simulation loop thread is live). Experiments (R9 P1), replay (R9 P3) and export (R9 P4)
+are all live; export still 404s an id that no run produced (spec §98).
 """
 
 from __future__ import annotations
@@ -314,9 +314,93 @@ def test_metrics_and_events(client):
     assert any(ev["category"] == "SYSTEM" for ev in e["events"])
 
 
-def test_export_endpoint_still_absent_not_stubbed(client):
-    # spec §98: export (R9 P4) is not built yet, so it must 404, not return a placeholder.
-    assert client.post("/api/v1/export", json={}).status_code == 404
+def test_export_unknown_ids_404_and_bad_format_422(client):
+    # R9 P4: export never fabricates - an id that was never produced 404s.
+    assert client.get("/api/v1/export/experiments/exp-nope").status_code == 404
+    assert client.get("/api/v1/export/replays/replay-nope").status_code == 404
+    # `format` is a Literal -> FastAPI rejects an unknown value
+    assert client.get(
+        "/api/v1/export/replays/replay-nope", params={"format": "xml"}
+    ).status_code == 422
+
+
+def test_export_experiment_csv_and_json(client):
+    # write a completed comparison straight to the store (a full headless run is minutes);
+    # the export path itself is what is under test.
+    from app.persistence import ExperimentStore
+
+    store = ExperimentStore()
+    eid = "exp-20260908T000000000Z"
+    store.create(
+        experiment_id=eid, name="normal · fixed_time vs a2c", scenario="normal",
+        controllers=["fixed_time", "a2c"], seeds=[1, 2], baseline="fixed_time",
+        episode_seconds=120.0, reproducibility={"config_digest": "abc", "seeds": [1, 2]},
+    )
+
+    # an experiment with no comparison yet cannot be exported
+    assert client.get(f"/api/v1/export/experiments/{eid}").status_code == 409
+
+    store.complete(
+        eid,
+        comparison={
+            "baseline": "fixed_time",
+            "metrics": {
+                "traffic.avg_waiting_s": {
+                    "lower_is_better": True,
+                    "values": {
+                        "fixed_time": {"mean": 40.0, "improvement_pct_vs_baseline": None},
+                        "a2c untrained": {"mean": 30.0,
+                                          "improvement_pct_vs_baseline": 25.0},
+                    },
+                }
+            },
+        },
+        results=[
+            {"label": "fixed_time", "controller": "fixed_time", "model_mode": "fixed_time",
+             "aggregates": {"traffic.avg_waiting_s": {"n": 2, "mean": 40.0, "median": 40.0,
+                                                     "std": 2.0, "min": 38.0, "max": 42.0,
+                                                     "ci_half_width": 1.0}}},
+            {"label": "a2c untrained", "controller": "a2c", "model_mode": "untrained",
+             "aggregates": {"traffic.avg_waiting_s": {"n": 2, "mean": 30.0, "median": 30.0,
+                                                     "std": 3.0, "min": 27.0, "max": 33.0,
+                                                     "ci_half_width": 1.5}}},
+        ],
+        wall_time_s=5.0,
+    )
+
+    csv_res = client.get(f"/api/v1/export/experiments/{eid}", params={"format": "csv"})
+    assert csv_res.status_code == 200
+    assert csv_res.headers["content-type"].startswith("text/csv")
+    assert "attachment" in csv_res.headers["content-disposition"]
+    assert f"{eid}.csv" in csv_res.headers["content-disposition"]
+    lines = csv_res.text.strip().splitlines()
+    assert lines[0].startswith("experiment_id,scenario,metric")
+    assert any("a2c" in ln and "25.0" in ln for ln in lines[1:])
+
+    json_res = client.get(f"/api/v1/export/experiments/{eid}", params={"format": "json"})
+    assert json_res.status_code == 200
+    assert json_res.headers["content-type"].startswith("application/json")
+    assert json_res.json()["id"] == eid
+    assert json_res.json()["comparison"]["baseline"] == "fixed_time"
+
+
+def test_export_replay_csv_after_a_real_capture(client):
+    client.post("/api/v1/simulation/reset", json={"scenario_id": "normal", "seed": 7})
+    client.post("/api/v1/simulation/step", json={"ticks": 90})   # ~7 decisions
+    rid = client.post("/api/v1/replay/capture").json()["id"]
+
+    res = client.get(f"/api/v1/export/replays/{rid}", params={"format": "csv"})
+    assert res.status_code == 200
+    assert res.headers["content-type"].startswith("text/csv")
+    lines = res.text.strip().splitlines()
+    assert lines[0].startswith("replay_id,index,t,step")
+    assert "applied_phase" in lines[0] and "safety_action" in lines[0]
+    assert len(lines) - 1 >= 3          # one row per decision
+
+    j = client.get(f"/api/v1/export/replays/{rid}", params={"format": "json"})
+    assert j.json()["id"] == rid and j.json()["timeline"]
+
+    client.delete(f"/api/v1/replay/{rid}")   # keep the store tidy
 
 
 def test_replay_capture_list_seek_and_delete(client):

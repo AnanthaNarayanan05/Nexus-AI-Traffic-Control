@@ -81,7 +81,8 @@ POST /api/v1/replay/capture               freeze the current live run into a rep
 GET  /api/v1/replay/{id}                  full decision timeline + events + episode metrics
 GET  /api/v1/replay/{id}/at?t=            the decision frame (agents + coordination + safety + metrics) at-or-before t
 DELETE /api/v1/replay/{id}                drop one replay (storage management, §90)
-POST /api/v1/export                       { experiment_id, format: csv|json }   (P4 - not built, 404)
+GET  /api/v1/export/experiments/{id}      ?format=csv|json   comparison run download (R9 P4)
+GET  /api/v1/export/replays/{id}          ?format=csv|json   decision timeline download (R9 P4)
 ```
 
 ## 4. Determinism contract

@@ -1,8 +1,9 @@
 """REST surface (spec section 88, docs/system-flow.md section 3).
 
-Endpoints documented in system-flow.md but not yet implemented (experiments, training,
-models, replay, export) are deliberately absent rather than stubbed with placeholder
-data - see docs/STATUS.md (spec section 98).
+The simulation / scenario / agent / metrics endpoints live here; training, experiments,
+replay and export have their own routers (`app/api/*_routes.py`). Anything still
+unbuilt is left absent rather than stubbed with placeholder data - see docs/STATUS.md
+(spec section 98).
 """
 
 from __future__ import annotations
