@@ -7,6 +7,7 @@ import { DQNPanel } from '../components/DQNPanel';
 import { EventTimeline } from '../components/EventTimeline';
 import { MetricsRow } from '../components/MetricsRow';
 import { ModelModeBar } from '../components/ModelModeBar';
+import { PPOStrip } from '../components/PPOStrip';
 import { SimulationStage } from '../components/SimulationStage';
 import { ExperimentLab } from '../experiments/ExperimentLab';
 import { InspectorLab } from '../inspectors/InspectorLab';
@@ -36,6 +37,7 @@ function Dashboard() {
       <div className="column">
         <ModelModeBar />
         <A2CPanel />
+        <PPOStrip />
       </div>
 
       <div className="centre-column">

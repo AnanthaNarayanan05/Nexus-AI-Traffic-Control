@@ -9,8 +9,8 @@
  *   LIVE INFERENCE  - the running simulation on the dashboard; flip an agent to TRAINED
  *                     from the LIVE MODEL bar to load its active registry checkpoint.
  *
- * R9 active scope is A2C + DQN only (see lib/format.ts::ACTIVE_AGENTS). PPO is a legacy
- * agent - it cannot be trained here and the backend rejects PPO training runs.
+ * All three active agents train here (see lib/format.ts::ACTIVE_AGENTS): A2C
+ * (emergency priority), DQN (efficiency), PPO (adaptive congestion reduction).
  *
  * Every number shown is a real measurement streamed from the backend training service
  * (MASTER_PROMPT sections 84, 98, 114). Nothing here is mocked.
@@ -40,7 +40,7 @@ import { useTrainingStore } from '../store';
 import { Badge, Empty, KV, Panel, SectionLabel, Stat } from '../components/common/Primitives';
 import { Sparkline } from '../components/common/Sparkline';
 
-// R9 active scope: only A2C + DQN can be trained. PPO training is blocked backend-side.
+// A2C, DQN and PPO all train here (keyed off ACTIVE_AGENTS).
 const AGENTS = ACTIVE_AGENTS;
 const AGENT_COLOR: Record<AgentKey, string> = {
   a2c: 'var(--a2c)',

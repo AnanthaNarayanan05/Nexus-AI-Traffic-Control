@@ -602,11 +602,10 @@ input[type='range'] {
 
 .coord-flow {
   display: grid;
-  /* Six items: A2C card, DQN card, arrow, coordination card, arrow, safety card.
-     (Before R9 there was a third agent card — the template still carried its column,
-     which pushed the arrows into flex tracks and squeezed the cards into content
-     tracks.) */
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto minmax(0, 1.3fr) auto minmax(0, 1fr);
+  /* Seven items: A2C card, DQN card, PPO card, arrow, coordination card, arrow,
+     safety card (R10 — all three agents feed the ladder). */
+  grid-template-columns:
+    minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr) auto minmax(0, 1.3fr) auto minmax(0, 1fr);
   align-items: stretch;
   gap: 7px;
 }

@@ -1,9 +1,8 @@
 /**
- * LEGACY - not mounted. PPO is out of the R9 active scope (A2C + DQN only), so this
- * strip is no longer rendered on the dashboard and `GET /api/v1/agents/ppo` now 404s.
- * The file is kept (not deleted) so the panel can be restored quickly if PPO is ever
- * brought back, and as a reference implementation of the per-agent inspector layout.
- * Do not re-add `<PPOStrip />` to App.tsx without also un-deprecating PPO end to end.
+ * PPO - Adaptive Congestion Reduction (owner Delna Liz Denny). One of the three
+ * active agent panels on the live dashboard, alongside A2CPanel and DQNPanel.
+ * Reads the live PPO recommendation, the per-approach queue pressure and the
+ * reward decomposition (R = -alpha*Q - beta*W + gamma*T). See docs/ppo.md.
  */
 
 import { useAgentInspector } from '../hooks/useAgentInspector';

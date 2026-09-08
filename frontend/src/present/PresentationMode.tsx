@@ -2,12 +2,13 @@
  * Presentation mode (MASTER_PROMPT §24, §60-63, §108) — a full-screen, reduced-chrome
  * view for live demos.
  *
- * Minimal nav (one "exit" control), enlarged panels, and three scripted flagship demos.
+ * Minimal nav (one "exit" control), enlarged panels, and four scripted flagship demos.
  * Each demo pins a preset scenario to a fixed seed so a run on stage is bit-for-bit the
  * run rehearsed beforehand:
  *   1 — Emergency Response Challenge  (A2C)      → emergency_heavy
  *   2 — Efficiency Challenge          (DQN)      → high_stop_go
- *   3 — Mixed Crisis                  (full AI)  → mixed_crisis
+ *   3 — Congestion Reduction          (PPO)      → uneven
+ *   4 — Mixed Crisis                  (full AI)  → mixed_crisis
  *
  * A launch is three ordinary commands on the same WebSocket the dashboard uses — set AI
  * mode, load the scenario at the pinned seed, start. The simulation, the agents and the
@@ -31,7 +32,7 @@ import { useSimStore } from '../store';
  */
 export const PRESENTATION_SEED = 42;
 
-type DemoNumber = 1 | 2 | 3;
+type DemoNumber = 1 | 2 | 3 | 4;
 
 interface Demo {
   n: DemoNumber;
@@ -71,13 +72,26 @@ const DEMOS: Demo[] = [
   },
   {
     n: 3,
+    name: 'Congestion Reduction',
+    agent: 'PPO · adaptive congestion reduction',
+    scenarioId: 'uneven',
+    blurb:
+      'Unequal demand across the four approaches. PPO adapts the green split toward the busy approaches to cut queues and waiting time (R = −αQ − βW + γT); the safety layer still bounds every transition.',
+    watch: [
+      'Queue and average wait trend down as PPO reweights the split',
+      'Throughput holds while the busy approaches drain',
+      'Coordination basis shows the congestion term carrying the decision',
+    ],
+  },
+  {
+    n: 4,
     name: 'Mixed Crisis',
     agent: 'Full AI · coordination + safety',
     scenarioId: 'mixed_crisis',
     blurb:
-      'Everything at once: an emergency, uneven demand, and a scripted violation. A2C, DQN, the coordinator and the safety layer all work the same decision.',
+      'Everything at once: an emergency, uneven demand, and a scripted violation. A2C, DQN, PPO, the coordinator and the safety layer all work the same decision.',
     watch: [
-      'Both agents produce a recommendation every cycle',
+      'All three agents produce a recommendation every cycle',
       'The coordinator picks a winner; safety has the final say',
       'No unsafe transitions even under load',
     ],
@@ -113,7 +127,7 @@ export function PresentationMode() {
 
   const exit = useCallback(() => navigate(''), []);
 
-  // Minimal keyboard nav: Esc leaves, 1 / 2 / 3 launch a demo. Never while a control has
+  // Minimal keyboard nav: Esc leaves, 1 / 2 / 3 / 4 launch a demo. Never while a control has
   // focus (§64 — shortcuts don't fire while typing / adjusting an input).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -151,7 +165,7 @@ export function PresentationMode() {
             </>
           ) : (
             <span className="present-now-sub">
-              Pick a flagship demo below — or press 1, 2 or 3
+              Pick a flagship demo below — or press 1, 2, 3 or 4
             </span>
           )}
         </div>
@@ -216,7 +230,7 @@ export function PresentationMode() {
             </div>
           ) : (
             <p className="present-idle">
-              The three flagship demos each pin a preset scenario to seed {PRESENTATION_SEED} and run
+              The four flagship demos each pin a preset scenario to seed {PRESENTATION_SEED} and run
               the live AI loop — the coordinator and the authoritative safety layer included. Nothing
               is pre-recorded.
             </p>

@@ -11,12 +11,12 @@ import type { AgentKey } from './types';
 export const NO_DATA = '—';
 
 /**
- * Agents in the R9 active scope. A2C (emergency-vehicle prioritization) and DQN
- * (efficiency / fuel / emissions / safety) are the only algorithms wired into the
- * live loop, the training workflow and the primary UI. PPO is retained as a legacy
- * agent (checkpoints stay loadable) but is not part of this list — see docs/STATUS.md.
+ * The three active RL agents, each with its own objective (R10 §6):
+ * A2C — emergency-vehicle prioritization, DQN — efficiency / fuel / emissions /
+ * safety, PPO — adaptive congestion reduction under unbalanced demand. All three
+ * are wired into the live loop, the training workflow, coordination and the UI.
  */
-export const ACTIVE_AGENTS: readonly AgentKey[] = ['a2c', 'dqn'] as const;
+export const ACTIVE_AGENTS: readonly AgentKey[] = ['a2c', 'dqn', 'ppo'] as const;
 
 export function num(value: number | null | undefined, digits = 1): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return NO_DATA;
@@ -64,7 +64,7 @@ export const AGENT_LABEL = {
 export const AGENT_OBJECTIVE = {
   a2c: 'Emergency vehicle prioritization',
   dqn: 'Efficiency · fuel · emissions · safety',
-  ppo: 'Adaptive congestion reduction (legacy)',
+  ppo: 'Adaptive congestion reduction',
 } as const;
 
 export const AGENT_OWNER = {

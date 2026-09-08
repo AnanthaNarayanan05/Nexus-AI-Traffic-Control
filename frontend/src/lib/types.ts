@@ -595,7 +595,7 @@ export interface EvalComparison {
 
 /* ---------------------------------------------------------------- experiments */
 
-export type ExperimentController = 'fixed_time' | 'a2c' | 'dqn';
+export type ExperimentController = 'fixed_time' | 'a2c' | 'dqn' | 'ppo';
 export type ExperimentModelMode = 'untrained' | 'active' | 'latest' | string;
 export type ExperimentPhase = 'running' | 'completed' | 'failed';
 

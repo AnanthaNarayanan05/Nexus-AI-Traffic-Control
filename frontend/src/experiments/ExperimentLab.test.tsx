@@ -69,11 +69,12 @@ describe('ExperimentLab', () => {
     await screen.findByText(/No experiment this session/i);
   });
 
-  it('offers Fixed-Time plus the two active AI controllers', async () => {
+  it('offers Fixed-Time plus the three active AI controllers', async () => {
     render(<ExperimentLab />);
     expect(screen.getByText(/Fixed-Time \(baseline\)/)).toBeInTheDocument();
     expect(screen.getByText(/A2C — emergency/)).toBeInTheDocument();
     expect(screen.getByText(/DQN — efficiency/)).toBeInTheDocument();
+    expect(screen.getByText(/PPO — adaptive congestion/)).toBeInTheDocument();
     await screen.findByText(/No experiment this session/i);
   });
 

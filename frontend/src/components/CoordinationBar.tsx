@@ -11,9 +11,10 @@ const AGENT_COLOR: Record<AgentKey, string> = {
   ppo: 'var(--ppo)',
 };
 
-// R9 active scope: the live coordination loop only ever receives A2C + DQN
-// recommendations. PPO is a legacy agent and no longer feeds the pipeline.
-const ORDER: AgentKey[] = ['a2c', 'dqn'];
+// The live coordination loop receives all three agent recommendations (R10 §7):
+// A2C (emergency), DQN (efficiency), PPO (congestion). Rendered left-to-right in
+// the order they enter the priority ladder.
+const ORDER: AgentKey[] = ['a2c', 'dqn', 'ppo'];
 
 /** APPLIED means the safety layer passed the command through unchanged. */
 const SAFETY_TONE: Record<SafetyAction, 'good' | 'warn' | 'bad'> = {

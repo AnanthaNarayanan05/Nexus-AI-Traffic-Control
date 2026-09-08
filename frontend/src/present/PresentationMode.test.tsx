@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * Presentation mode (R9 P4, §60-63) is a reduced-chrome shell around the live loop. These
- * tests stub the socket and the heavy child panels and assert: the three flagship demos
+ * tests stub the socket and the heavy child panels and assert: the four flagship demos
  * are listed, launching one fires the real command sequence (AI mode → scenario at the
  * pinned seed → start), the "what to watch" brief appears, the number keys and Esc work,
  * and the launchers are disabled while the backend is offline. No simulation runs here.
@@ -42,10 +42,11 @@ afterEach(() => {
 });
 
 describe('PresentationMode', () => {
-  it('lists the three flagship demos', () => {
+  it('lists the four flagship demos', () => {
     render(<PresentationMode />);
     expect(screen.getByRole('button', { name: /Emergency Response Challenge/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Efficiency Challenge/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Congestion Reduction/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Mixed Crisis/ })).toBeInTheDocument();
   });
 
@@ -72,13 +73,13 @@ describe('PresentationMode', () => {
     expect(screen.getByRole('button', { name: /Restart this demo/ })).toBeInTheDocument();
   });
 
-  it('launches demo 3 on the "3" key and exits on Escape', () => {
+  it('launches demo 4 on the "4" key and exits on Escape', () => {
     render(<PresentationMode />);
 
-    fireEvent.keyDown(document.body, { key: '3' });
+    fireEvent.keyDown(document.body, { key: '4' });
     expect(hoisted.command).toHaveBeenCalledWith('set_mode', { mode: 'AI' });
     // active demo shown in the header
-    expect(screen.getByText(/Demo 3 · Mixed Crisis/)).toBeInTheDocument();
+    expect(screen.getByText(/Demo 4 · Mixed Crisis/)).toBeInTheDocument();
 
     fireEvent.keyDown(document.body, { key: 'Escape' });
     expect(window.location.hash).toBe('#/');

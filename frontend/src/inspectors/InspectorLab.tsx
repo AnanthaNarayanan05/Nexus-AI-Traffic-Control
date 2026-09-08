@@ -37,7 +37,7 @@ import type {
 } from '../lib/types';
 import { useAgentStore, useSimStore } from '../store';
 
-const AGENTS: AgentKey[] = ['a2c', 'dqn'];
+const AGENTS: AgentKey[] = ['a2c', 'dqn', 'ppo'];
 const APPROACHES: Approach[] = ['N', 'E', 'S', 'W'];
 
 const SAFETY_TONE: Record<SafetyAction, 'good' | 'warn' | 'bad'> = {

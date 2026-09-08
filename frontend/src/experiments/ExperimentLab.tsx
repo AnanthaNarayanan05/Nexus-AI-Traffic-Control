@@ -29,6 +29,7 @@ const CONTROLLER_OPTIONS: { key: ExperimentController; label: string }[] = [
   { key: 'fixed_time', label: 'Fixed-Time (baseline)' },
   { key: 'a2c', label: 'A2C — emergency-vehicle priority' },
   { key: 'dqn', label: 'DQN — efficiency / fuel / emissions / safety' },
+  { key: 'ppo', label: 'PPO — adaptive congestion reduction' },
 ];
 
 const MODEL_MODES = ['untrained', 'active', 'latest'] as const;
