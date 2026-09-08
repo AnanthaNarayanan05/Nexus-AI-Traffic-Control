@@ -125,7 +125,11 @@ recorded here. `[PPT]` = fixed by the source; everything below is an engineering
 
 ## Frontend
 - **A16.** Vehicle positions are streamed at 20 Hz and interpolated client-side to hit the 60 FPS render
-  target (spec §72, §115). The authoritative state is always server-side.
+  target (spec §72, §115). The authoritative state is always server-side. The physics itself ticks at
+  2 Hz (`step_length_s 0.5`), so each sprite moves at constant velocity from its pose at the previous
+  tick to its pose in the latest snapshot, over the measured wall-clock gap between ticks. The render
+  therefore lags reality by ~one tick; the interpolation fraction is clamped to 1, so a position is
+  never extrapolated past the latest snapshot (spec §84, §114).
 - **A20. Per-approach signal aspect (`approach_colors`) is computed server-side** by the
   `SignalController` and sent on the wire, rather than re-derived in the browser from the
   phase. The renderer must show exactly what the controller believes it is showing (spec §114).

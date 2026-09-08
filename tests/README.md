@@ -45,7 +45,9 @@ cd frontend && npm run test      # vitest run
 `src/lib/format.test.ts` (display helpers + `ACTIVE_AGENTS` R9 scope lock),
 `src/store/index.test.ts` (socket wiring via a stubbed `socket`, incl. the
 `training_update` and `experiment_update` frames), `src/render/scene.test.ts` (world-frame
-direction vectors + geometry constants vs the backend), `src/training/TrainingLab.test.tsx`
+direction vectors + geometry constants vs the backend; the vehicle-interpolation helpers
+— `lerpFraction` clamps to [0, 1] so a late frame never extrapolates past the last
+snapshot (R9 P6, A16/§84), `shortestArc` turns the short way), `src/training/TrainingLab.test.tsx`
 (the `#/training` view: TRAINING/EVALUATION/LIVE-INFERENCE framing, idle live-run state,
 registry rows — API client stubbed), `src/components/ModelModeBar.test.tsx` (per-agent
 UNTRAINED/TRAINED toggle reflects status + emits the `set_model` command),

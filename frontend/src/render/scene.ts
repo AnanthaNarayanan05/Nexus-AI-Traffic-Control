@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Sprite, Text, Texture } from 'pixi.js';
 
-import type { Approach, CompactState, SignalColor, VehicleArrays } from '../lib/types';
+import type { Approach, CompactState, SignalColor } from '../lib/types';
 
 /**
  * PixiJS 2D renderer for the intersection.
@@ -10,8 +10,11 @@ import type { Approach, CompactState, SignalColor, VehicleArrays } from '../lib/
  * canvas y grows downward.
  *
  * Vehicle positions are the simulation's own output. The only client-side liberty is
- * visual easing between the 2 Hz physics ticks and the 60 fps canvas - documented in
- * docs/assumptions.md A16. No position is ever extrapolated past the latest snapshot.
+ * visual interpolation between the 2 Hz physics ticks and the 60 fps canvas - documented
+ * in docs/assumptions.md A16. Each sprite travels at a constant velocity from its pose at
+ * the previous tick to its pose at the latest one, over the measured wall-clock gap
+ * between those ticks. The render therefore lags reality by ~one tick and never
+ * extrapolates past the latest snapshot (the interpolation fraction is clamped to 1).
  */
 
 export interface SceneGeometry {
@@ -80,6 +83,27 @@ const VEHICLE_LENGTH_M: Record<string, number> = {
 
 const APPROACHES: Approach[] = ['N', 'E', 'S', 'W'];
 
+/**
+ * A per-tick segment longer than this (metres) is a respawn or a lane wrap, not travel:
+ * jump straight to the end pose instead of sliding a sprite across the whole map.
+ */
+export const SNAP_DIST = 25;
+
+/** Interpolation fraction for a segment, clamped to [0, 1] so nothing is extrapolated. */
+export function lerpFraction(nowMs: number, startMs: number, durMs: number): number {
+  if (durMs <= 0) return 1;
+  const f = (nowMs - startMs) / durMs;
+  return f <= 0 ? 0 : f >= 1 ? 1 : f;
+}
+
+/** Signed shortest angular delta from `from` to `to`, in radians (-π, π]. */
+export function shortestArc(from: number, to: number): number {
+  let d = to - from;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
+
 /** Incoming travel direction per approach, mirroring APPROACH_DIR in geometry.py. */
 const DIR: Record<Approach, [number, number]> = {
   N: [0, -1],
@@ -91,6 +115,12 @@ const DIR: Record<Approach, [number, number]> = {
 interface VehicleNode {
   sprite: Sprite;
   halo: Graphics | null;
+  // Segment start: the sprite's on-screen pose captured when the last physics tick
+  // landed. Segment end (x, y, rot): the latest confirmed snapshot pose. animate()
+  // walks the sprite from start to end at constant speed over segDurMs.
+  x0: number;
+  y0: number;
+  rot0: number;
   x: number;
   y: number;
   rot: number;
@@ -116,6 +146,14 @@ export class IntersectionScene {
   private paintedColor = new Map<Approach, SignalColor>();
   private paintedQueue = new Map<Approach, number>();
   private frameTick = 0;
+
+  // Constant-velocity interpolation clock. The state stream repeats each physics tick
+  // ~10x; only a change in sim_time is new travel, and that opens a fresh segment sized
+  // to the real time between ticks (so it tracks the sim speed multiplier).
+  private segStartMs = 0;
+  private segDurMs = 500;
+  private lastSimTime = Number.NaN;
+  private lastAdvanceMs = 0;
 
   private latest: CompactState | null = null;
   private viewRadius = 95;
@@ -190,7 +228,7 @@ export class IntersectionScene {
   /** Feed one snapshot. Called at the stream rate, independent of the render loop. */
   update(state: CompactState): void {
     this.latest = state;
-    if (this.ready) this.syncVehicles(state.vehicles);
+    if (this.ready) this.syncVehicles(state);
   }
 
   /* ---------------------------------------------------------------- layout */
@@ -296,8 +334,27 @@ export class IntersectionScene {
 
   /* ---------------------------------------------------------------- vehicles */
 
-  private syncVehicles(v: VehicleArrays): void {
+  private syncVehicles(state: CompactState): void {
+    const v = state.vehicles;
     this.frameTick += 1;
+
+    // Only a change in sim_time carries new travel. When it moves, open a fresh
+    // interpolation segment: freeze each sprite's current on-screen pose as the
+    // segment start and aim it at this snapshot. Size the segment to the measured
+    // wall-clock gap between ticks (lightly smoothed) so sprites move at a steady
+    // speed rather than lurching between the ~10 repeated frames of each tick.
+    const now = performance.now();
+    const advanced = state.sim_time !== this.lastSimTime;
+    if (advanced) {
+      if (this.lastAdvanceMs > 0) {
+        const gap = now - this.lastAdvanceMs;
+        if (gap > 60 && gap < 4000) this.segDurMs = this.segDurMs * 0.4 + gap * 0.6;
+      }
+      this.lastAdvanceMs = now;
+      this.lastSimTime = state.sim_time;
+      this.segStartMs = now;
+    }
+
     const n = v.id.length;
     for (let i = 0; i < n; i += 1) {
       const id = v.id[i];
@@ -315,6 +372,8 @@ export class IntersectionScene {
         sprite.tint = v.violator[i]
           ? COLORS.violator
           : (VEHICLE_TINT[v.type[i]] ?? COLORS.car);
+        sprite.position.set(sx, sy);
+        sprite.rotation = rot;
         this.vehicleLayer.addChild(sprite);
 
         let halo: Graphics | null = null;
@@ -323,16 +382,19 @@ export class IntersectionScene {
           halo.circle(0, 0, 5.5).fill({ color: COLORS.ambulance, alpha: 0.22 });
           this.vehicleLayer.addChildAt(halo, 0);
         }
-        node = { sprite, halo, x: sx, y: sy, rot, seen: this.frameTick };
+        node = { sprite, halo, x0: sx, y0: sy, rot0: rot, x: sx, y: sy, rot, seen: this.frameTick };
         this.nodes.set(id, node);
+      } else if (advanced) {
+        node.x0 = node.sprite.position.x;
+        node.y0 = node.sprite.position.y;
+        node.rot0 = node.sprite.rotation;
+        node.x = sx;
+        node.y = sy;
+        node.rot = rot;
       }
 
       node.seen = this.frameTick;
       node.sprite.tint = v.violator[i] ? COLORS.violator : (VEHICLE_TINT[v.type[i]] ?? COLORS.car);
-      // target pose; the ticker eases the sprite toward it
-      node.x = sx;
-      node.y = sy;
-      node.rot = rot;
     }
 
     for (const [id, node] of this.nodes) {
@@ -345,27 +407,24 @@ export class IntersectionScene {
   }
 
   private animate(): void {
-    const t = this.app.ticker;
-    // frame-rate independent easing toward the last received pose
-    const k = 1 - Math.exp(-t.deltaMS / 55);
+    const now = performance.now();
+    // constant-velocity walk along the current tick's segment; clamped, never past the end
+    const f = lerpFraction(now, this.segStartMs, this.segDurMs);
     for (const node of this.nodes.values()) {
       const s = node.sprite;
-      const dx = node.x - s.position.x;
-      const dy = node.y - s.position.y;
-      // a large jump means a respawn or a wrap: snap rather than slide across the map
-      if (Math.abs(dx) > 25 || Math.abs(dy) > 25) {
+      const dx = node.x - node.x0;
+      const dy = node.y - node.y0;
+      // a large segment means a respawn or a wrap: snap rather than slide across the map
+      if (Math.abs(dx) > SNAP_DIST || Math.abs(dy) > SNAP_DIST) {
         s.position.set(node.x, node.y);
         s.rotation = node.rot;
       } else {
-        s.position.set(s.position.x + dx * k, s.position.y + dy * k);
-        let dr = node.rot - s.rotation;
-        while (dr > Math.PI) dr -= Math.PI * 2;
-        while (dr < -Math.PI) dr += Math.PI * 2;
-        s.rotation += dr * k;
+        s.position.set(node.x0 + dx * f, node.y0 + dy * f);
+        s.rotation = node.rot0 + shortestArc(node.rot0, node.rot) * f;
       }
       if (node.halo) {
         node.halo.position.copyFrom(s.position);
-        const pulse = 0.75 + 0.25 * Math.sin(performance.now() / 220);
+        const pulse = 0.75 + 0.25 * Math.sin(now / 220);
         node.halo.scale.set(pulse);
       }
     }
