@@ -53,8 +53,8 @@ UNTRAINED/TRAINED toggle reflects status + emits the `set_model` command),
 always shown, directional-improvement colouring, "within noise" for sub-CI deltas, no fake
 ratio when the baseline is ~0, direction indicators), `src/experiments/ExperimentLab.test.tsx`
 (the `#/experiments` view: honest-comparison framing, controller picker, past-experiment
-rows, CSV / JSON export links on a completed run's detail point at
-`/export/experiments/{id}` (R9 P4) — API client stubbed),
+rows, a completed row opens from the keyboard (Enter, R9 P6), CSV / JSON export links on a
+completed run's detail point at `/export/experiments/{id}` (R9 P4) — API client stubbed),
 `src/scenarios/ScenarioLab.test.tsx` (the `#/scenarios` view:
 presets list with difficulty, presets are read-only with only "Duplicate to edit", a custom
 scenario opens editable with Save/Delete, "+ New" slugifies the name into the id and Save
@@ -63,6 +63,7 @@ posts the draft, the preview describes the draft in plain English — API client
 badge, newest replay auto-opens and shows the coordinator → authoritative-safety pipeline,
 the transport steps through decisions, "Capture current run" hits the endpoint and shows
 the result with a friendly message on 409, "vehicle-level playback is not captured" stated,
+a replay row is selectable from the keyboard (Enter, R9 P6),
 CSV / JSON export links point at `/export/replays/{id}` (R9 P4) — API client stubbed),
 `src/present/PresentationMode.test.tsx` (the `#/present` view, R9 P4 §60–63: the three
 flagship demos are listed; launching one fires the real command sequence — `set_mode` AI →
@@ -74,7 +75,8 @@ ladder + phase scores + per-agent recommendations + safety verdict, warns when s
 rewrote the choice, empty state outside AI mode; the Signal tab renders the phase SM +
 per-approach authoritative aspect; the Emergency tab shows the active EV + A2C priority
 override, empty otherwise; the Vehicle tab polls `GET /simulation/state`, lists + filters
-vehicles and opens a per-vehicle detail; the DQN tab renders sampled `state → action →
+vehicles (a `role="listbox"` of `role="option"` rows) and opens a per-vehicle detail on
+click or from the keyboard (Space, R9 P6); the DQN tab renders sampled `state → action →
 reward → next state → done` transitions and an empty-buffer state — API client + stores
 stubbed), `src/components/MetricsRow.test.tsx` (the live metrics panel, R9 P5: the figures
 are read straight from the `MetricSnapshot`, an awaiting-first-snapshot badge shows before

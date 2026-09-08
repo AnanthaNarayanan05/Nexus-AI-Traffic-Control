@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { ExportLinks } from '../components/common/ExportLinks';
 import { Badge, Empty, KV, Panel, SectionLabel, Stat } from '../components/common/Primitives';
+import { activateOnKey } from '../lib/a11y';
 import { ApiError, api, exportUrls } from '../lib/api';
 import { AGENT_LABEL, NO_DATA, clock, num, pct, titleise } from '../lib/format';
 import type {
@@ -75,7 +76,11 @@ function ReplayList({
         <div
           key={r.id}
           className={r.id === selectedId ? 'rpl-item active' : 'rpl-item'}
+          role="button"
+          tabIndex={0}
+          aria-pressed={r.id === selectedId}
           onClick={() => onSelect(r.id)}
+          onKeyDown={activateOnKey(() => onSelect(r.id))}
         >
           <div className="rpl-item-head">
             <span className="rpl-item-name">{r.scenario_name}</span>

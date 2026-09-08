@@ -233,6 +233,18 @@ describe('ReplayLab', () => {
     expect(screen.getByText('dqn reason 1')).toBeInTheDocument();
   });
 
+  it('selects a replay from the keyboard (Enter activates the row)', async () => {
+    render(<ReplayLab />);
+    await screen.findByText('Normal traffic');
+    await waitFor(() => expect(hoisted.replay).toHaveBeenCalledWith('replay-2')); // newest auto-opens
+    hoisted.replay.mockClear();
+
+    const row = screen.getByRole('button', { name: /Normal traffic .* seed 42/i });
+    expect(row).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(row, { key: 'Enter' });
+    await waitFor(() => expect(hoisted.replay).toHaveBeenCalledWith('replay-1'));
+  });
+
   it('captures the current run and surfaces the result', async () => {
     hoisted.captureReplay.mockResolvedValue({
       ...SUMMARIES[0],

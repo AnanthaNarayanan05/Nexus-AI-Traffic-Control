@@ -11,6 +11,7 @@ import { useCallback, useEffect, useState } from 'react';
 
 import { ExportLinks } from '../components/common/ExportLinks';
 import { Badge, Empty, KV, Panel, SectionLabel } from '../components/common/Primitives';
+import { activateOnKey } from '../lib/a11y';
 import { ApiError, api, exportUrls } from '../lib/api';
 import { NO_DATA, int, num } from '../lib/format';
 import type {
@@ -320,6 +321,10 @@ function ExperimentHistory({
                   <tr
                     key={r.id}
                     onClick={openable ? () => onOpen(r.id) : undefined}
+                    onKeyDown={openable ? activateOnKey(() => onOpen(r.id)) : undefined}
+                    tabIndex={openable ? 0 : undefined}
+                    role={openable ? 'button' : undefined}
+                    aria-label={openable ? `Open comparison for ${r.name}` : undefined}
                     className={
                       r.id === activeId ? 'cmp-row-active' : openable ? 'cmp-row-click' : ''
                     }

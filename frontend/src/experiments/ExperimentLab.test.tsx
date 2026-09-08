@@ -163,4 +163,38 @@ describe('ExperimentLab', () => {
     expect(await screen.findByText('normal · fixed_time vs a2c')).toBeInTheDocument();
     await waitFor(() => expect(screen.getByText('COMPLETED')).toBeInTheDocument());
   });
+
+  it('opens a completed experiment row from the keyboard', async () => {
+    const { fireEvent } = await import('@testing-library/react');
+    hoisted.snapshot = {
+      seq: 1,
+      running: false,
+      job: null,
+      history: [
+        {
+          id: 'exp-20260908T120000000Z',
+          name: 'normal · fixed_time vs a2c',
+          created_at: '2026-09-08T12:00:00Z',
+          finished_at: '2026-09-08T12:00:20Z',
+          wall_time_s: 20.4,
+          scenario: 'normal',
+          controllers: ['fixed_time', 'a2c'],
+          seeds: [1, 2],
+          episode_seconds: 90,
+          baseline: 'fixed_time',
+          status: 'completed',
+          error: null,
+        },
+      ],
+    };
+    hoisted.experiment.mockResolvedValue(null);
+    render(<ExperimentLab />);
+    const row = (await screen.findByText('normal · fixed_time vs a2c')).closest('tr') as HTMLElement;
+    expect(row).toHaveAttribute('role', 'button');
+    expect(row).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(row, { key: 'Enter' });
+    await waitFor(() =>
+      expect(hoisted.experiment).toHaveBeenCalledWith('exp-20260908T120000000Z'),
+    );
+  });
 });

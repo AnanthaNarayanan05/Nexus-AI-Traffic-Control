@@ -386,6 +386,15 @@ describe('InspectorLab', () => {
     expect(screen.getByText(/Snapshot polled every 2s/i)).toBeInTheDocument();
   });
 
+  it('selects a vehicle from the keyboard (Space on the option row)', async () => {
+    render(<InspectorLab />);
+    fireEvent.click(screen.getByRole('button', { name: 'Vehicles' }));
+    const row = await screen.findByRole('option', { name: /car-1/ });
+    expect(row).toHaveAttribute('tabindex', '0');
+    fireEvent.keyDown(row, { key: ' ' });
+    expect(await screen.findByText('VEHICLE car-1')).toBeInTheDocument();
+  });
+
   it('filters the vehicle list to emergencies only', async () => {
     render(<InspectorLab />);
     fireEvent.click(screen.getByRole('button', { name: 'Vehicles' }));

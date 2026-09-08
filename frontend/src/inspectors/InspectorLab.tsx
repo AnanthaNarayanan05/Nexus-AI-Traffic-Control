@@ -21,6 +21,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { Badge, Empty, KV, Panel, SectionLabel, Stat } from '../components/common/Primitives';
 import { useAgentInspector } from '../hooks/useAgentInspector';
+import { activateOnKey } from '../lib/a11y';
 import { api } from '../lib/api';
 import { AGENT_LABEL, NO_DATA, int, num, pct, titleise } from '../lib/format';
 import type {
@@ -575,8 +576,8 @@ function VehicleInspector() {
         {filtered.length === 0 ? (
           <Empty>No vehicles match the filter.</Empty>
         ) : (
-          <div className="insp-veh-list" role="table">
-            <div className="insp-veh-row insp-veh-head" role="row">
+          <div className="insp-veh-list" role="listbox" aria-label="Vehicles in the network">
+            <div className="insp-veh-row insp-veh-head" aria-hidden="true">
               <span>id</span>
               <span>type</span>
               <span>approach·lane</span>
@@ -587,9 +588,12 @@ function VehicleInspector() {
             {filtered.slice(0, 120).map((v) => (
               <div
                 className={v.id === selectedId ? 'insp-veh-row insp-veh-sel' : 'insp-veh-row'}
-                role="row"
+                role="option"
+                aria-selected={v.id === selectedId}
+                tabIndex={0}
                 key={v.id}
                 onClick={() => setSelectedId(v.id)}
+                onKeyDown={activateOnKey(() => setSelectedId(v.id))}
               >
                 <span>
                   {v.is_emergency ? '🚨 ' : ''}
