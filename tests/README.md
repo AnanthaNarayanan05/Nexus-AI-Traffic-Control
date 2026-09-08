@@ -76,4 +76,8 @@ per-approach authoritative aspect; the Emergency tab shows the active EV + A2C p
 override, empty otherwise; the Vehicle tab polls `GET /simulation/state`, lists + filters
 vehicles and opens a per-vehicle detail; the DQN tab renders sampled `state → action →
 reward → next state → done` transitions and an empty-buffer state — API client + stores
-stubbed).
+stubbed), `src/components/MetricsRow.test.tsx` (the live metrics panel, R9 P5: the figures
+are read straight from the `MetricSnapshot`, an awaiting-first-snapshot badge shows before
+any frame, the trend strip accumulates a polyline across distinct `sim_time` frames, and a
+frame re-published at the same `sim_time` adds no sample — so a single reading stays a
+dashed placeholder, never a faked flat line (§84) — socket stubbed).

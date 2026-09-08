@@ -1,7 +1,7 @@
 /**
- * Inline-SVG sparkline for a series of episode returns. Draws only the points it is
- * given - no smoothing, no interpolation of missing values (MASTER_PROMPT sections
- * 84, 114).
+ * Inline-SVG sparkline for a numeric series. Draws only the points it is given — no
+ * smoothing, no interpolation of missing values, no invented baseline (MASTER_PROMPT
+ * §84, §114). Under two points it shows a dashed rule, not a fake flat line.
  */
 
 export function Sparkline({
@@ -9,15 +9,26 @@ export function Sparkline({
   width = 260,
   height = 48,
   color = 'var(--accent)',
+  label,
 }: {
   values: number[];
   width?: number;
   height?: number;
   color?: string;
+  /** Accessible description; a sensible default is derived from the latest value. */
+  label?: string;
 }) {
   if (values.length < 2) {
     return (
-      <svg className="sparkline" width={width} height={height} role="img" aria-label="no data yet">
+      <svg
+        className="sparkline"
+        width={width}
+        height={height}
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={label ?? 'no data yet'}
+      >
         <line
           x1={0}
           y1={height / 2}
@@ -51,9 +62,15 @@ export function Sparkline({
       width={width}
       height={height}
       role="img"
-      aria-label={`episode returns, latest ${last.toFixed(2)}`}
+      aria-label={label ?? `series, latest ${last.toFixed(2)}`}
     >
-      <polyline points={points.join(' ')} fill="none" stroke={color} strokeWidth={1.5} />
+      <polyline
+        points={points.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        vectorEffect="non-scaling-stroke"
+      />
       <circle cx={lx} cy={ly} r={2.5} fill={color} />
     </svg>
   );

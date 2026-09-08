@@ -1,15 +1,31 @@
+import { useMetricTrail } from '../hooks/useMetricTrail';
 import { NO_DATA, int, num } from '../lib/format';
 import { useSimStore } from '../store';
 import { Badge, Panel, Stat } from './common/Primitives';
+import { Sparkline } from './common/Sparkline';
 
 /**
  * Every figure here is read straight from the backend MetricSnapshot. Nothing is
  * derived, smoothed or compared against a baseline in the browser: a comparison against
  * fixed-time is a measured experiment, not a display trick (MASTER_PROMPT sections 84, 114).
+ *
+ * The trend row plots the raw samples this browser has seen since the view opened —
+ * monochrome on purpose, so the line shape is the only story it tells (no green/red
+ * "the AI is winning" editorialising).
  */
+
+const TRENDS: { key: keyof ReturnType<typeof useMetricTrail>; label: string }[] = [
+  { key: 'avg_waiting_s', label: 'Avg wait' },
+  { key: 'throughput_vph', label: 'Throughput' },
+  { key: 'avg_speed_mps', label: 'Avg speed' },
+  { key: 'stops_per_veh', label: 'Stops / veh' },
+  { key: 'emergency_wait_s', label: 'Emergency wait' },
+];
+
 export function MetricsRow() {
   const metrics = useSimStore((s) => s.metrics);
   const mode = useSimStore((s) => s.status?.mode);
+  const trails = useMetricTrail();
 
   const t = metrics?.traffic;
   const env = metrics?.environmental;
@@ -73,6 +89,28 @@ export function MetricsRow() {
           value={int(safety?.unsafe_transitions)}
           tone={safety && safety.unsafe_transitions > 0 ? 'var(--red)' : 'var(--green)'}
         />
+      </div>
+
+      <div className="metric-trends" aria-hidden={!metrics}>
+        {TRENDS.map(({ key, label }) => {
+          const series = trails[key];
+          return (
+            <div className="metric-trend" key={key}>
+              <span className="metric-trend-label">{label}</span>
+              <Sparkline
+                values={series}
+                width={132}
+                height={26}
+                color="var(--accent)"
+                label={
+                  series.length > 1
+                    ? `${label} trend, latest ${series[series.length - 1].toFixed(2)}`
+                    : `${label} trend, collecting samples`
+                }
+              />
+            </div>
+          );
+        })}
       </div>
     </Panel>
   );

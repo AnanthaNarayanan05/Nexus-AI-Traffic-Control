@@ -802,6 +802,45 @@ input[type='range'] {
   grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
 }
 
+/* Live trend strip under the metric grid (R9 P5). Raw samples this browser has seen —
+   monochrome, no baseline, no editorialising. */
+.metric-trends {
+  display: grid;
+  gap: 7px;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  margin-top: 7px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.metric-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.metric-trend-label {
+  font-size: 9px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.sparkline {
+  display: block;
+  width: 100%;
+  height: 48px;
+  overflow: visible;
+}
+
+.metric-trend .sparkline {
+  height: 26px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+}
+
 .estimated-tag {
   font-size: 8.5px;
   letter-spacing: 0.06em;

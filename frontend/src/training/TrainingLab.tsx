@@ -38,7 +38,7 @@ import type {
 } from '../lib/types';
 import { useTrainingStore } from '../store';
 import { Badge, Empty, KV, Panel, SectionLabel, Stat } from '../components/common/Primitives';
-import { Sparkline } from './Sparkline';
+import { Sparkline } from '../components/common/Sparkline';
 
 // R9 active scope: only A2C + DQN can be trained. PPO training is blocked backend-side.
 const AGENTS = ACTIVE_AGENTS;
