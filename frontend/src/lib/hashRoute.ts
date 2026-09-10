@@ -1,31 +1,70 @@
 /**
  * Minimal hash router. The project has no react-router dependency and only needs a
- * handful of top-level views (the live dashboard, the Training Lab, the Experiment
- * Lab), so a `location.hash` lookup with a subscription is enough.
+ * handful of top-level views, so a `location.hash` lookup with a subscription is enough.
  *
- * Routes are the bare hash without the `#`: '' (dashboard), 'training', 'experiments',
- * 'scenarios', 'replay', 'inspect', 'present' (full-screen demo mode).
+ * Routes are the bare hash without the `#`:
+ *   ''            the product home page
+ *   live          the live traffic-control experience
+ *   scenarios     the scenario picker (and custom-scenario builder)
+ *   insights      NEXUS vs. traditional signal control
+ *   reports       run reports and data export
+ *   help          plain-language help
+ *   present       full-screen presentation mode
+ *
+ * The remaining routes are the engineering surfaces. They stay reachable for the
+ * project's internal / academic needs (R11 §51) but are not part of the primary
+ * customer navigation:
+ *   training      per-agent training + model registry
+ *   experiments   the raw experiment lab
+ *   replay        the raw replay lab
+ *   inspect       the low-level inspectors
  */
 
 import { useCallback, useSyncExternalStore } from 'react';
 
 export type Route =
   | ''
+  | 'live'
+  | 'scenarios'
+  | 'insights'
+  | 'reports'
+  | 'help'
+  | 'present'
   | 'training'
   | 'experiments'
-  | 'scenarios'
   | 'replay'
-  | 'inspect'
-  | 'present';
+  | 'inspect';
 
 const ROUTES: Route[] = [
   '',
+  'live',
+  'scenarios',
+  'insights',
+  'reports',
+  'help',
+  'present',
   'training',
   'experiments',
-  'scenarios',
   'replay',
   'inspect',
-  'present',
+];
+
+/** Routes that make up the primary customer navigation, in order. */
+export const PRIMARY_NAV: { route: Route; label: string }[] = [
+  { route: '', label: 'Home' },
+  { route: 'live', label: 'Live' },
+  { route: 'scenarios', label: 'Scenarios' },
+  { route: 'insights', label: 'Insights' },
+  { route: 'reports', label: 'Reports' },
+];
+
+/** Engineering surfaces — reachable, but kept out of the primary navigation. */
+export const ADVANCED_NAV: { route: Route; label: string }[] = [
+  { route: 'training', label: 'AI training' },
+  { route: 'experiments', label: 'Experiment lab' },
+  { route: 'replay', label: 'Replay lab' },
+  { route: 'inspect', label: 'Inspectors' },
+  { route: 'present', label: 'Presentation mode' },
 ];
 
 function parse(hash: string): Route {

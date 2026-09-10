@@ -36,7 +36,7 @@ const LEGEND: [string, string][] = [
   ['#ff2d55', 'violator'],
 ];
 
-export function SimulationStage() {
+export function SimulationStage({ minimalChrome = false }: { minimalChrome?: boolean } = {}) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const sceneRef = useRef<IntersectionScene | null>(null);
   const [radius, setRadius] = useState(95);
@@ -116,9 +116,11 @@ export function SimulationStage() {
       title="Intersection"
       accent="var(--accent)"
       sub={
-        state
-          ? `t=${clock(state.sim_time)} · step ${int(state.step)} · ${status?.adapter ?? NO_DATA}`
-          : undefined
+        minimalChrome
+          ? undefined
+          : state
+            ? `t=${clock(state.sim_time)} · step ${int(state.step)} · ${status?.adapter ?? NO_DATA}`
+            : undefined
       }
       flex
       bodyClass="stage"
@@ -170,7 +172,7 @@ export function SimulationStage() {
           style={{ width: 96, padding: 0 }}
           aria-label="View radius in metres"
         />
-        <span>{fps === null ? NO_DATA : `${Math.round(fps)} fps`}</span>
+        {minimalChrome ? null : <span>{fps === null ? NO_DATA : `${Math.round(fps)} fps`}</span>}
       </div>
     </Panel>
   );

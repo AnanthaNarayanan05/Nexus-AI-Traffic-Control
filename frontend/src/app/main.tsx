@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { wireSocket } from '../store';
 import { App } from './App';
 import './theme.css';
+import './product.css';
 
 const host = document.getElementById('root');
 if (!host) throw new Error('#root not found in index.html');

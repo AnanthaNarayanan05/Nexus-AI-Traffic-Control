@@ -72,3 +72,71 @@ export const AGENT_OWNER = {
   dqn: 'Shaun Joseph Sabu',
   ppo: 'Delna Liz Denny',
 } as const;
+
+/**
+ * Customer-facing names for the three AI capabilities (R11 §10, §41). The algorithm
+ * name (A2C / DQN / PPO) may still appear as a secondary detail, but the product
+ * surface leads with what each one does for the road, not how it is built.
+ */
+export const AGENT_PRODUCT_NAME = {
+  a2c: 'Emergency Response',
+  dqn: 'Traffic Efficiency',
+  ppo: 'Congestion Management',
+} as const;
+
+/** One plain sentence describing what each capability does (R11 §10). */
+export const AGENT_PRODUCT_BLURB = {
+  a2c: 'Clears a path for approaching emergency vehicles.',
+  dqn: 'Keeps traffic moving with less fuel use and fewer stops.',
+  ppo: 'Balances the signal when demand is heavier on one side.',
+} as const;
+
+/**
+ * Plain-language wording for a safety outcome (R11 §15, §37). The raw enum
+ * (`REWRITTEN_TRANSITION`, …) is only ever shown in an expanded "decision details"
+ * view — never on the primary surface.
+ */
+export const SAFETY_PRODUCT_STATUS: Record<
+  string,
+  { label: string; tone: 'good' | 'warn' | 'bad'; detail: string }
+> = {
+  APPLIED: {
+    label: 'Approved',
+    tone: 'good',
+    detail: 'Safety validation approved the signal change.',
+  },
+  REWRITTEN_TRANSITION: {
+    label: 'Adjusted for safety',
+    tone: 'warn',
+    detail: 'NEXUS adjusted the AI recommendation to keep the signal transition safe.',
+  },
+  BLOCKED_HOLD: {
+    label: 'Held for safety',
+    tone: 'warn',
+    detail: 'NEXUS held the current signal because changing it now would be unsafe.',
+  },
+  FORCED_CHANGE: {
+    label: 'Safety change',
+    tone: 'bad',
+    detail: 'NEXUS forced a signal change to resolve an unsafe situation.',
+  },
+  EMERGENCY_TIMEOUT: {
+    label: 'Safety timeout',
+    tone: 'bad',
+    detail: 'NEXUS ended an over-long phase to protect the intersection.',
+  },
+};
+
+/** Product wording for the coordinator's choice of which recommendation to act on. */
+export function coordinationBasisText(winner: string): string {
+  switch (winner) {
+    case 'a2c':
+      return 'NEXUS selected the emergency-priority recommendation.';
+    case 'dqn':
+      return 'NEXUS selected the traffic-efficiency recommendation.';
+    case 'ppo':
+      return 'NEXUS selected the congestion-management recommendation.';
+    default:
+      return 'NEXUS selected the safest valid signal for current traffic.';
+  }
+}
