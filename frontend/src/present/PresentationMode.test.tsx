@@ -22,10 +22,9 @@ vi.mock('../lib/ws', () => ({
 vi.mock('../components/SimulationStage', () => ({
   SimulationStage: () => <div data-testid="sim-stage" />,
 }));
-vi.mock('../components/MetricsRow', () => ({ MetricsRow: () => <div data-testid="metrics-row" /> }));
-vi.mock('../components/CoordinationBar', () => ({
-  CoordinationBar: () => <div data-testid="coord-bar" />,
-}));
+vi.mock('../live/CustomerMetrics', () => ({ CustomerMetrics: () => <div data-testid="metrics-row" /> }));
+vi.mock('../live/DecisionFlow', () => ({ DecisionFlow: () => <div data-testid="decision-flow" /> }));
+vi.mock('../live/SafetyStatus', () => ({ SafetyStatus: () => <div data-testid="safety-status" /> }));
 
 import { PRESENTATION_SEED, PresentationMode } from './PresentationMode';
 import { useSimStore } from '../store';
@@ -69,7 +68,7 @@ describe('PresentationMode', () => {
     render(<PresentationMode />);
     fireEvent.click(screen.getByRole('button', { name: /Efficiency Challenge/ }));
     expect(screen.getByText('What to watch')).toBeInTheDocument();
-    expect(screen.getByText(/Stops \/ veh trends down/)).toBeInTheDocument();
+    expect(screen.getByText(/Stops per vehicle trends down/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Restart this demo/ })).toBeInTheDocument();
   });
 

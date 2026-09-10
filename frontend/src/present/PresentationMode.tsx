@@ -19,10 +19,11 @@
 import { useCallback, useEffect, useState } from 'react';
 
 import { Badge } from '../components/common/Primitives';
-import { CoordinationBar } from '../components/CoordinationBar';
-import { MetricsRow } from '../components/MetricsRow';
 import { SimulationStage } from '../components/SimulationStage';
 import { navigate } from '../lib/hashRoute';
+import { CustomerMetrics } from '../live/CustomerMetrics';
+import { DecisionFlow } from '../live/DecisionFlow';
+import { SafetyStatus } from '../live/SafetyStatus';
 import { socket } from '../lib/ws';
 import { useSimStore } from '../store';
 
@@ -47,53 +48,53 @@ const DEMOS: Demo[] = [
   {
     n: 1,
     name: 'Emergency Response Challenge',
-    agent: 'A2C · emergency prioritization',
+    agent: 'Emergency Response',
     scenarioId: 'emergency_heavy',
     blurb:
-      'Ambulances arrive under heavy traffic. A2C recommends holding green for the emergency approach; the safety layer still enforces minimum green and safe transitions.',
+      'Ambulances keep arriving while traffic is already heavy. NEXUS gives the emergency approach priority while the safety layer keeps every signal change safe.',
     watch: [
-      'Emergency wait drops as A2C prioritises the approach',
-      'Coordination basis flips to an emergency override',
-      'Every forced change is still bounded by the safety layer',
+      'The emergency vehicle’s wait drops as NEXUS clears its path',
+      'The decision switches to emergency priority',
+      'Safety still approves or adjusts every change',
     ],
   },
   {
     n: 2,
     name: 'Efficiency Challenge',
-    agent: 'DQN · fuel / CO₂ / stops',
+    agent: 'Traffic Efficiency',
     scenarioId: 'high_stop_go',
     blurb:
-      'Stop-and-go arrival bursts. DQN trades raw throughput for smoother flow — fewer stops per vehicle, so less fuel burned and less CO₂.',
+      'Traffic arrives in stop-and-go bursts. NEXUS smooths the flow so vehicles stop less often, using less fuel.',
     watch: [
-      'Stops / veh trends down',
-      'Fuel and CO₂ per vehicle (ESTIMATED) settle lower',
-      'Average speed rises without the queue blowing up',
+      'Stops per vehicle trends down',
+      'Estimated fuel and CO₂ per vehicle settle lower',
+      'Average speed rises without the queue growing',
     ],
   },
   {
     n: 3,
     name: 'Congestion Reduction',
-    agent: 'PPO · adaptive congestion reduction',
+    agent: 'Congestion Management',
     scenarioId: 'uneven',
     blurb:
-      'Unequal demand across the four approaches. PPO adapts the green split toward the busy approaches to cut queues and waiting time (R = −αQ − βW + γT); the safety layer still bounds every transition.',
+      'Demand is much heavier on some approaches than others. NEXUS shifts green time toward the busy sides to cut queues and waiting time.',
     watch: [
-      'Queue and average wait trend down as PPO reweights the split',
+      'Queue length and waiting time trend down',
       'Throughput holds while the busy approaches drain',
-      'Coordination basis shows the congestion term carrying the decision',
+      'The decision reflects congestion management',
     ],
   },
   {
     n: 4,
     name: 'Mixed Crisis',
-    agent: 'Full AI · coordination + safety',
+    agent: 'Full AI control',
     scenarioId: 'mixed_crisis',
     blurb:
-      'Everything at once: an emergency, uneven demand, and a scripted violation. A2C, DQN, PPO, the coordinator and the safety layer all work the same decision.',
+      'Everything at once — an emergency, uneven demand and a red-light violation. All three capabilities, the coordinator and the safety layer handle the same moment.',
     watch: [
-      'All three agents produce a recommendation every cycle',
-      'The coordinator picks a winner; safety has the final say',
-      'No unsafe transitions even under load',
+      'Each capability contributes a recommendation',
+      'NEXUS picks one; the safety layer has the final say',
+      'No unsafe signal transitions, even under load',
     ],
   },
 ];
@@ -164,9 +165,7 @@ export function PresentationMode() {
               <span className="present-now-sub">{active.agent}</span>
             </>
           ) : (
-            <span className="present-now-sub">
-              Pick a flagship demo below — or press 1, 2, 3 or 4
-            </span>
+            <span className="present-now-sub">Choose a demonstration to begin</span>
           )}
         </div>
 
@@ -176,10 +175,7 @@ export function PresentationMode() {
           ) : (
             <Badge tone="bad">backend offline</Badge>
           )}
-          <Badge tone="neutral" title="Every flagship demo is pinned to this seed">
-            seed {PRESENTATION_SEED}
-          </Badge>
-          <button className="btn" onClick={exit} title="Back to the full dashboard (Esc)">
+          <button className="btn" onClick={exit} title="Leave presentation mode (Esc)">
             ✕ Exit presentation
           </button>
         </div>
@@ -187,9 +183,10 @@ export function PresentationMode() {
 
       <main className="present-main">
         <div className="present-stage">
-          <SimulationStage />
-          <CoordinationBar />
-          <MetricsRow />
+          <SimulationStage minimalChrome />
+          <DecisionFlow />
+          <SafetyStatus />
+          <CustomerMetrics />
         </div>
 
         <aside className="present-rail">
@@ -230,9 +227,9 @@ export function PresentationMode() {
             </div>
           ) : (
             <p className="present-idle">
-              The four flagship demos each pin a preset scenario to seed {PRESENTATION_SEED} and run
-              the live AI loop — the coordinator and the authoritative safety layer included. Nothing
-              is pre-recorded.
+              Each demonstration runs the live NEXUS control loop on a fixed scenario —
+              the coordinator and the always-on safety layer included. Nothing is
+              pre-recorded.
             </p>
           )}
         </aside>

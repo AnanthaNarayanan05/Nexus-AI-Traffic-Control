@@ -1091,6 +1091,24 @@
   gap: 6px;
 }
 
+/* ---------- presentation mode (customer panels) ---------- */
+
+.present-stage {
+  grid-template-rows: minmax(0, 1fr) auto auto auto;
+}
+.present-stage .decision-flow,
+.present-stage .safety-status,
+.present-stage .customer-metrics {
+  background: color-mix(in srgb, var(--bg-panel) 72%, transparent);
+}
+.present-stage .decision-details,
+.present-stage .decision-actions {
+  display: none;
+}
+.present-stage .metric-card-value {
+  font-size: 24px;
+}
+
 /* ---------- animation ---------- */
 
 @keyframes nexus-pulse {
