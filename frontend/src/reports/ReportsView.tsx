@@ -4,6 +4,7 @@ import { ExportLinks } from '../components/common/ExportLinks';
 import { api, exportUrls } from '../lib/api';
 import { clock } from '../lib/format';
 import type { Route } from '../lib/hashRoute';
+import { navigateWith } from '../lib/hashRoute';
 import type { ExperimentSummary, ReplaySummary } from '../lib/types';
 
 /**
@@ -66,7 +67,7 @@ export function ReportsView({ go }: { go: (r: Route) => void }) {
                   {r.episode_complete ? 'completed' : 'stopped early'}
                 </p>
                 <div className="report-card-foot">
-                  <button className="link-btn" onClick={() => go('replay')}>
+                  <button className="link-btn" onClick={() => navigateWith('events', r.id)}>
                     Open event replay
                   </button>
                   <ExportLinks url={(f) => exportUrls.replay(r.id, f)} label="Export data" />

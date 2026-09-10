@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import { clock } from '../lib/format';
 import type { Route } from '../lib/hashRoute';
-import { ADVANCED_NAV, PRIMARY_NAV } from '../lib/hashRoute';
+import { ADVANCED_NAV, PRIMARY_NAV, SECONDARY_NAV } from '../lib/hashRoute';
 import { useSimStore } from '../store';
 
 /**
@@ -90,9 +90,18 @@ export function AppHeader({ route, go }: { route: Route; go: (r: Route) => void 
           </button>
           {menuOpen ? (
             <div className="app-menu-list" role="menu">
-              <button role="menuitem" onClick={() => { setMenuOpen(false); go('help'); }}>
-                Help
-              </button>
+              {SECONDARY_NAV.map(({ route: r, label }) => (
+                <button
+                  key={r}
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    go(r);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
               <div className="app-menu-sep" />
               <span className="app-menu-heading">Advanced tools</span>
               {ADVANCED_NAV.map(({ route: r, label }) => (

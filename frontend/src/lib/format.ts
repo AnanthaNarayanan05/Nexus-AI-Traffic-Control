@@ -127,6 +127,34 @@ export const SAFETY_PRODUCT_STATUS: Record<
   },
 };
 
+/** Product wording for the signal that ends up being served. */
+export function signalActionText(phase: string): string {
+  switch (phase) {
+    case 'NS':
+    case 'N':
+    case 'S':
+      return 'North–South traffic released.';
+    case 'EW':
+    case 'E':
+    case 'W':
+      return 'East–West traffic released.';
+    case 'YELLOW':
+      return 'Signal changing — clearing the intersection.';
+    case 'ALL_RED':
+      return 'All directions held briefly for a safe changeover.';
+    default:
+      return 'Signal updated.';
+  }
+}
+
+/** The compass name of an approach letter, for customer copy. */
+export const APPROACH_NAME: Record<string, string> = {
+  N: 'North',
+  E: 'East',
+  S: 'South',
+  W: 'West',
+};
+
 /** Product wording for the coordinator's choice of which recommendation to act on. */
 export function coordinationBasisText(winner: string): string {
   switch (winner) {

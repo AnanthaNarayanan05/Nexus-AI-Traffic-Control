@@ -5,6 +5,7 @@ import {
   AGENT_PRODUCT_NAME,
   SAFETY_PRODUCT_STATUS,
   coordinationBasisText,
+  signalActionText,
 } from '../lib/format';
 import type { AgentKey } from '../lib/types';
 import { useAgentStore } from '../store';
@@ -83,23 +84,4 @@ export function DecisionFlow() {
       ) : null}
     </section>
   );
-}
-
-function signalActionText(phase: string): string {
-  switch (phase) {
-    case 'NS':
-    case 'N':
-    case 'S':
-      return 'North–South traffic released.';
-    case 'EW':
-    case 'E':
-    case 'W':
-      return 'East–West traffic released.';
-    case 'YELLOW':
-      return 'Signal changing — clearing the intersection.';
-    case 'ALL_RED':
-      return 'All directions held briefly for a safe changeover.';
-    default:
-      return 'Signal updated.';
-  }
 }

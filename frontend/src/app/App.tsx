@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 
+import { EventReplayView } from '../events/EventReplayView';
 import { ExperimentLab } from '../experiments/ExperimentLab';
 import { HelpView } from '../help/HelpView';
 import { Home } from '../home/Home';
@@ -13,10 +14,12 @@ import { PresentationMode } from '../present/PresentationMode';
 import { ReplayLab } from '../replay/ReplayLab';
 import { ReportsView } from '../reports/ReportsView';
 import { ScenariosView } from '../scenarios/ScenariosView';
+import { SettingsView } from '../settings/SettingsView';
 import { useSimStore } from '../store';
 import { TrainingLab } from '../training/TrainingLab';
 import { AppFooter } from './AppFooter';
 import { AppHeader } from './AppHeader';
+import { SettingsEffects } from './SettingsEffects';
 
 // The visible wordmark lives in the header; each view still needs a real <h1> for
 // assistive-tech landmark/heading navigation. Most views render their own <h1>; the
@@ -50,12 +53,19 @@ export function App() {
   }, [setScenarios]);
 
   // Presentation mode is a full-screen takeover: no header, no footer (R11 §27).
+  // SettingsEffects still mounts so motion / contrast preferences apply there too.
   if (route === 'present') {
-    return <PresentationMode />;
+    return (
+      <>
+        <SettingsEffects />
+        <PresentationMode />
+      </>
+    );
   }
 
   return (
     <div className="app-shell">
+      <SettingsEffects />
       <AppHeader route={route} go={go} />
       {ADVANCED_TITLE[route] ? <h1 className="sr-only">{ADVANCED_TITLE[route]}</h1> : null}
 
@@ -70,6 +80,10 @@ export function App() {
           <InsightsView />
         ) : route === 'reports' ? (
           <ReportsView go={go} />
+        ) : route === 'events' ? (
+          <EventReplayView />
+        ) : route === 'settings' ? (
+          <SettingsView />
         ) : route === 'help' ? (
           <HelpView go={go} />
         ) : route === 'training' ? (

@@ -28,6 +28,8 @@ export type Route =
   | 'scenarios'
   | 'insights'
   | 'reports'
+  | 'events'
+  | 'settings'
   | 'help'
   | 'present'
   | 'training'
@@ -41,6 +43,8 @@ const ROUTES: Route[] = [
   'scenarios',
   'insights',
   'reports',
+  'events',
+  'settings',
   'help',
   'present',
   'training',
@@ -56,6 +60,13 @@ export const PRIMARY_NAV: { route: Route; label: string }[] = [
   { route: 'scenarios', label: 'Scenarios' },
   { route: 'insights', label: 'Insights' },
   { route: 'reports', label: 'Reports' },
+];
+
+/** Secondary customer destinations reached from the header menu / footer. */
+export const SECONDARY_NAV: { route: Route; label: string }[] = [
+  { route: 'events', label: 'Event replay' },
+  { route: 'settings', label: 'Settings' },
+  { route: 'help', label: 'Help' },
 ];
 
 /** Engineering surfaces — reachable, but kept out of the primary navigation. */
@@ -84,6 +95,21 @@ function snapshot(): Route {
 export function navigate(route: Route): void {
   const next = route ? `#/${route}` : '#/';
   if (window.location.hash !== next) window.location.hash = next;
+}
+
+/**
+ * Navigate to a route with a single path parameter, e.g. `#/events/<replay-id>`.
+ * Ids passed here are always server-minted (never user text); encode anyway.
+ */
+export function navigateWith(route: Route, param: string): void {
+  const next = `#/${route}/${encodeURIComponent(param)}`;
+  if (window.location.hash !== next) window.location.hash = next;
+}
+
+/** The path parameter after the route segment (`#/events/<id>` → `<id>`), or null. */
+export function routeParam(): string | null {
+  const parts = window.location.hash.replace(/^#\/?/, '').split('?')[0].split('/');
+  return parts[1] ? decodeURIComponent(parts[1]) : null;
 }
 
 export function useHashRoute(): [Route, (route: Route) => void] {
