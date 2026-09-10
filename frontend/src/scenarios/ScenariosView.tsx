@@ -4,6 +4,7 @@ import type { Route } from '../lib/hashRoute';
 import type { ScenarioDifficulty } from '../lib/types';
 import { socket } from '../lib/ws';
 import { useSimStore } from '../store';
+import { CustomScenarioForm } from './CustomScenarioForm';
 import { ScenarioLab } from './ScenarioLab';
 
 /**
@@ -65,7 +66,17 @@ export function ScenariosView({ go }: { go: (r: Route) => void }) {
       </header>
 
       {custom ? (
-        <ScenarioLab />
+        <>
+          <CustomScenarioForm go={go} />
+          <details className="engineering">
+            <summary>Advanced scenario editor</summary>
+            <p className="engineering-note">
+              The full editor with every demand, event and condition control, plus the
+              preset scenarios. Intended for detailed or academic setups.
+            </p>
+            <ScenarioLab />
+          </details>
+        </>
       ) : scenarios.length === 0 ? (
         <p className="empty-note">
           No scenarios are available yet. Once the traffic network is online they will
